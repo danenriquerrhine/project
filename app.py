@@ -19,11 +19,8 @@ print("QWERTYUIOP%%%%%%%%%#############: ",os.getcwd())
 def homepage():
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("SELECT * FROM venues")
-
     venues = cursor.fetchall()
-
     return render_template("homepage.html", venues=venues)
 
 print(os.getcwd())
@@ -35,6 +32,8 @@ def venue_page(venue_id):
     query = "SELECT * FROM venues WHERE id = %s"
     cursor.execute(query, (venue_id,))
     venue = cursor.fetchone()
+    cursor.close()
+    db.close()
     return render_template("venue.html", venue=venue)
 @app.route("/health")
 def health():
