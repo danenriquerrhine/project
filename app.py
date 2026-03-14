@@ -10,7 +10,7 @@ db = mysql.connector.connect(
     user="root",
     password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
     database="railway",
-    port= "53099"
+    port= 53099
 )
 print("QWERTYUIOP%%%%%%%%%#############: ",os.getcwd())
 # Homepage route
