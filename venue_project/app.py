@@ -1,5 +1,6 @@
 from flask import Flask, render_template
 import mysql.connector
+import os
 
 app = Flask(__name__)
 
@@ -11,9 +12,9 @@ db = mysql.connector.connect(
     database="railway",
     port= "53099"
 )
-
+print(os.getcwd())
 # Homepage route
-@app.route("/")
+@app.route("templates/")
 def homepage():
 
     cursor = db.cursor(dictionary=True)
@@ -24,9 +25,9 @@ def homepage():
 
     return render_template("homepage.html", venues=venues)
 
-
+print(os.getcwd())
 # Venue page route
-@app.route("/venue/<int:venue_id>")
+@app.route("template/venue/<int:venue_id>")
 def venue_page(venue_id):
 
     cursor = db.cursor(dictionary=True)
