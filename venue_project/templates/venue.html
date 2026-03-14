@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>{{ venue.name }}</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+margin:0;
+}
+
+.venue-page{
+max-width:900px;
+margin:auto;
+padding:40px;
+background:white;
+}
+
+.venue-page img{
+width:100%;
+border-radius:10px;
+margin-top:20px;
+}
+
+.back{
+display:inline-block;
+margin-bottom:20px;
+color:#3f5683;
+text-decoration:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="venue-page">
+
+<a href="/" class="back">← Back to Homepage</a>
+
+<h1>{{ venue.name }}</h1>
+
+<p><b>Location:</b> {{ venue.location }}</p>
+
+<img src="{{ venue.image }}">
+
+<p><b>Rating:</b> {{ venue.rating }}</p>
+
+<p><b>Reviews:</b> {{ venue.reviews }}</p>
+
+<p>{{ venue.description }}</p>
+
+</div>
+
+</body>
+</html>
