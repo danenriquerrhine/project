@@ -12,9 +12,9 @@ db = mysql.connector.connect(
     database="railway",
     port= "53099"
 )
-print(os.getcwd())
+print("QWERTYUIOP%%%%%%%%%#############: ",os.getcwd())
 # Homepage route
-@app.route("templates/")
+@app.route("/templates/")
 def homepage():
 
     cursor = db.cursor(dictionary=True)
@@ -27,7 +27,7 @@ def homepage():
 
 print(os.getcwd())
 # Venue page route
-@app.route("template/venue/<int:venue_id>")
+@app.route("/template/venue/<int:venue_id>")
 def venue_page(venue_id):
 
     cursor = db.cursor(dictionary=True)
