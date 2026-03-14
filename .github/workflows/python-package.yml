@@ -32,4 +32,6 @@ jobs:
         python -m pip install mysql-connector-python
     - name: Run website
       run: |
+        pwd
+        ls -lrt
         python app.py
