@@ -34,4 +34,5 @@ jobs:
       run: |
         pwd
         ls -lrt
+        cd venue_project
         python app.py
