@@ -8,7 +8,7 @@ db = mysql.connector.connect(
     host="interchange.proxy.rlwy.net",
     user="root",
     password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
-    database="railway"
+    database="railway",
     port= "53099"
 )
 
