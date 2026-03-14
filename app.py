@@ -30,17 +30,12 @@ print(os.getcwd())
 # Venue page route
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
-
+    db = get_db()
     cursor = db.cursor(dictionary=True)
-
     query = "SELECT * FROM venues WHERE id = %s"
-
     cursor.execute(query, (venue_id,))
-
     venue = cursor.fetchone()
-
     return render_template("venue.html", venue=venue)
-
 @app.route("/health")
 def health():
     return "OK"
