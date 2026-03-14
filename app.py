@@ -20,7 +20,7 @@ def homepage():
         cursor = db.cursor(dictionary=True)
         cursor.execute("SELECT * FROM venues")
         venues = cursor.fetchall()
-        return render_template("homepage.html", venues=venues)
+        return render_template("Homepage.html", venues=venues)
     except Exception as e:
         return str(e)
 print(os.getcwd())
