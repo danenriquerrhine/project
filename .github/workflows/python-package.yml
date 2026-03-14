@@ -28,7 +28,7 @@ jobs:
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
-          --health-timeoit=5s
+          --health-timeout=5s
           --health-retries=3s
     steps:
     - uses: actions/checkout@v4
