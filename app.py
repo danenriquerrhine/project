@@ -17,12 +17,14 @@ print("QWERTYUIOP%%%%%%%%%#############: ",os.getcwd())
 # Homepage route
 @app.route("/")
 def homepage():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM venues")
-    venues = cursor.fetchall()
-    return render_template("homepage.html", venues=venues)
-
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM venues")
+        venues = cursor.fetchall()
+        return render_template("homepage.html", venues=venues)
+    except Exception as e:
+        return str(e)
 print(os.getcwd())
 # Venue page route
 @app.route("/venue/<int:venue_id>")
