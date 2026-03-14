@@ -4,19 +4,20 @@ import os
 
 app = Flask(__name__)
 
-# MySQL connection
-db = mysql.connector.connect(
-    host="interchange.proxy.rlwy.net",
-    user="root",
-    password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
-    database="railway",
-    port= 53099
-)
+
+def get_db():
+    return mysql.connector.connect(
+        host="interchange.proxy.rlwy.net",
+        user="root",
+        password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
+        database="railway",
+        port=53099
+    )
 print("QWERTYUIOP%%%%%%%%%#############: ",os.getcwd())
 # Homepage route
 @app.route("/")
 def homepage():
-
+    db = get_db()
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM venues")
