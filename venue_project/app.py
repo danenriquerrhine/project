@@ -9,6 +9,7 @@ db = mysql.connector.connect(
     user="root",
     password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
     database="railway"
+    port= "53099"
 )
 
 # Homepage route
