@@ -1,6 +1,6 @@
 from flask import Flask, render_template
 import mysql.connector
-
+import os
 app = Flask(__name__, template_folder="templates")
 
 def get_db():
