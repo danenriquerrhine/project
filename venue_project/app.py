@@ -5,10 +5,10 @@ app = Flask(__name__)
 
 # MySQL connection
 db = mysql.connector.connect(
-    host="localhost",
+    host="interchange.proxy.rlwy.net",
     user="root",
-    password="3268",
-    database="venue_booking"
+    password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
+    database="railway"
 )
 
 # Homepage route
