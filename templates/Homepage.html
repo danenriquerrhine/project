@@ -2,113 +2,155 @@
 <html lang="en">
 <head>
 
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Venue Review Website</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Venue Review Website</title>
 
-	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
-	<style>
+<style>
 
-	body{
-		margin:0;
-		font-family:Arial;
-		background:#f2f2f2;
-		}
+body{
+margin:0;
+font-family:Arial;
+background:#f2f2f2;
+}
 
-	.header{
-		background:#3f5683;
-		color:white;
-		padding:60px;
-		font-size:50px;
-		}
+.header{
+background:#3f5683;
+color:white;
+padding:60px;
+font-size:50px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
 
-	.section{
-		padding:40px;
-		}
+.my-bookings{
+font-size:18px;
+background:white;
+color:#3f5683;
+padding:10px 18px;
+border-radius:6px;
+text-decoration:none;
+}
 
-	.venue-container{
-		display:grid;
-		grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-		gap:25px;
-		margin-top:30px;			
-		}
+.my-bookings:hover{
+background:#e6e6e6;
+}
 
-	.venue-card{
-		background:white;
-		border-radius:10px;
-		overflow:hidden;
-		box-shadow:0 4px 10px rgba(0,0,0,0.1);
-		transition:0.3s;
-		}
+.section{
+padding:40px;
+}
 
-	.venue-card:hover{
-		transform:translateY(-6px);
-		}
+.venue-container{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:25px;
+margin-top:30px;
+}
 
-	.venue-card img{
-		width:100%;
-		height:180px;
-		object-fit:cover;
-		}
+.venue-card{
+background:white;
+border-radius:10px;
+overflow:hidden;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+transition:0.3s;
+}
 
-	.venue-info{
-		padding:15px;
-		}
+.venue-card:hover{
+transform:translateY(-6px);
+}
 
-	.venue-title{
-		font-size:18px;
-		font-weight:bold;
-		}
+.venue-card img{
+width:100%;
+height:180px;
+object-fit:cover;
+}
 
-	.location{
-		color:#666;
-		font-size:14px;
-		margin-bottom:10px;
-		}
+.venue-info{
+padding:15px;
+}
 
-	.rating{
-		background:#003580;
-		color:white;
-		padding:4px 7px;
-		border-radius:4px;
-		font-size:13px;
-		}
+.venue-title{
+font-size:18px;
+font-weight:bold;
+}
 
-	.venue-link{
-		text-decoration:none;
-		color:inherit;
-		}
+.location{
+color:#666;
+font-size:14px;
+margin-bottom:10px;
+}
+
+.rating{
+background:#003580;
+color:white;
+padding:4px 7px;
+border-radius:4px;
+font-size:13px;
+}
+
+.venue-link{
+text-decoration:none;
+color:inherit;
+}
 
 </style>
+
 </head>
+
 <body>
-	<div class="header">
-	Venue Review Website
-	</div>
-	<div class="section">
-		<h2>Popular Venues</h2>
-		<div class="venue-container">
-		{% for venue in venues %}
-			<a href="/venue/{{ venue.id }}" class="venue-link">
-			<div class="venue-card">
-				<img src="{{ venue.image }}">
-				<div class="venue-info">
-				<div class="venue-title">
-				{{ venue.name }}
-			</div>
-			<div class="location">
-				{{ venue.location }}
-				</div>
-			<div>
-				<span class="rating">{{ venue.rating }}</span>
-			</div>
-				<p>{{ venue.description }}</p>
-			</div>
-			</div>
-			</a>
-		{% endfor %}
+
+<div class="header">
+
+<div>Venue Review Website</div>
+
+<a href="/my_bookings" class="my-bookings">My Bookings</a>
+
 </div>
+
+<div class="section">
+
+<h2>Popular Venues</h2>
+
+<div class="venue-container">
+
+{% for venue in venues %}
+
+<a href="/venue/{{ venue.id }}" class="venue-link">
+
+<div class="venue-card">
+
+<img src="{{ venue.image }}">
+
+<div class="venue-info">
+
+<div class="venue-title">
+{{ venue.name }}
 </div>
+
+<div class="location">
+{{ venue.location }}
+</div>
+
+<div>
+<span class="rating">{{ venue.rating }}</span>
+</div>
+
+<p>{{ venue.description }}</p>
+
+</div>
+
+</div>
+
+</a>
+
+{% endfor %}
+
+</div>
+
+</div>
+
 </body>
 </html>
