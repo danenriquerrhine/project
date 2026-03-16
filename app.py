@@ -38,38 +38,38 @@ def venue_page(venue_id):
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
 
-    venue_id = request.form["venue_id"]
     date = request.form["date"]
+    venue_id = request.form["venue_id"]
 
     db = get_db()
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
 
+    # get venue details again
+    cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
+    venue = cursor.fetchone()
+
+    # booked slots
     cursor.execute(
         "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s",
         (venue_id, date)
     )
-
-    booked = [row[0] for row in cursor.fetchall()]
+    booked = [row["time_slot"] for row in cursor.fetchall()]
 
     all_slots = [
-        "09:00","10:00","11:00","12:00",
-        "13:00","14:00","15:00","16:00",
-        "17:00","18:00","19:00"
+        "10:00","11:00","12:00","13:00",
+        "14:00","15:00","16:00","17:00",
+        "18:00","19:00"
     ]
 
     available = [slot for slot in all_slots if slot not in booked]
 
-    cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
-    venue = cursor.fetchone()
-
     return render_template(
         "booking.html",
+        venue=venue,
         venue_id=venue_id,
         date=date,
-        available=available,
-        venue=venue
+        available=available
     )
-
 # Confirmation page
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
