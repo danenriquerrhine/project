@@ -10,22 +10,19 @@ def get_db():
         user="root",
         password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
         database="railway",
-        port=53099,
-        connection_timeout=10   # seconds
+        port=53099
     )
+
 # Homepage
 @app.route("/")
 def homepage():
-    try:
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM venues")
-        venues = cursor.fetchall()
-        cursor.close()
-        db.close()
-        return render_template("Homepage.html", venues=venues)
-    except mysql.connector.Error as err:
-        return f"Database error: {err}", 500
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM venues")
+    venues = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return render_template("Homepage.html", venues=venues)
 
 # Venue Page
 @app.route("/venue/<int:venue_id>")
@@ -49,13 +46,11 @@ def check_availability():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    # get venue details again
     cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
     venue = cursor.fetchone()
     if not venue:
         abort(404)
 
-    # booked slots
     cursor.execute(
         "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s",
         (venue_id, date)
@@ -104,18 +99,18 @@ def confirm_booking():
         time_slot=time_slot
     )
 
-# Final booking
+# Final booking with manual ID generation
 @app.route("/book", methods=["POST"])
 def book():
+    venue_id = request.form["venue_id"]
+    date = request.form["date"]
+    time_slot = request.form["time_slot"]
+
+    db = get_db()
+    cursor = db.cursor()
+
     try:
-        venue_id = request.form["venue_id"]
-        date = request.form["date"]
-        time_slot = request.form["time_slot"]
-
-        db = get_db()
-        cursor = db.cursor()
-
-        # Generate new ID
+        # Generate next available ID
         cursor.execute("SELECT MAX(id) FROM bookings")
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
@@ -125,15 +120,16 @@ def book():
             (new_id, venue_id, date, time_slot)
         )
         db.commit()
+    except Exception as e:
+        db.rollback()
+        return f"Booking failed: {e}", 500
+    finally:
         cursor.close()
         db.close()
-        return redirect(url_for("my_bookings"))
-    except mysql.connector.Error as err:
-        return f"Database error: {err}", 500
-    except Exception as e:
-        return f"Unexpected error: {e}", 500
 
-# My bookings page – now renders "my_booking.html" (without 's')
+    return redirect(url_for("my_bookings"))
+
+# My bookings page – now renders my_booking.html (without 's')
 @app.route("/my_bookings")
 def my_bookings():
     db = get_db()
@@ -146,7 +142,7 @@ def my_bookings():
     bookings = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template("my_booking.html", bookings=bookings)   # note: my_booking.html (no 's')
+    return render_template("my_booking.html", bookings=bookings)
 
 # Delete booking
 @app.route("/delete_booking/<int:id>")
