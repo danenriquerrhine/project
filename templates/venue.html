@@ -35,6 +35,13 @@ color:#3f5683;
 text-decoration:none;
 }
 
+.booking-box{
+margin-top:40px;
+padding:20px;
+background:#f7f7f7;
+border-radius:10px;
+}
+
 </style>
 
 </head>
@@ -56,6 +63,25 @@ text-decoration:none;
 <p><b>Reviews:</b> {{ venue.reviews }}</p>
 
 <p>{{ venue.description }}</p>
+
+<div class="booking-box">
+
+<h2>Book This Venue</h2>
+
+<form action="/check_availability" method="post">
+
+<input type="hidden" name="venue_id" value="{{ venue.id }}">
+
+<label>Select Date:</label><br>
+<input type="date" name="date" required>
+
+<br><br>
+
+<button type="submit">Check Availability</button>
+
+</form>
+
+</div>
 
 </div>
 
