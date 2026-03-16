@@ -1,5 +1,4 @@
-
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, abort
 import mysql.connector
 import os
 
@@ -21,6 +20,8 @@ def homepage():
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT * FROM venues")
     venues = cursor.fetchall()
+    cursor.close()
+    db.close()
     return render_template("Homepage.html", venues=venues)
 
 # Venue Page
@@ -28,16 +29,17 @@ def homepage():
 def venue_page(venue_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
     venue = cursor.fetchone()
-
+    cursor.close()
+    db.close()
+    if not venue:
+        abort(404)
     return render_template("venue.html", venue=venue)
 
 # Check available time slots
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
-
     date = request.form["date"]
     venue_id = request.form["venue_id"]
 
@@ -47,6 +49,8 @@ def check_availability():
     # get venue details again
     cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
     venue = cursor.fetchone()
+    if not venue:
+        abort(404)
 
     # booked slots
     cursor.execute(
@@ -62,7 +66,9 @@ def check_availability():
     ]
 
     available = [slot for slot in all_slots if slot not in booked]
-    print("%$%$%$%$%$%$%$%#@#@#@##@#@#@#@#@#@#@#@#!@@!@!@!@!@!@!@!@!@@!*(*(*(*()()(()(")
+
+    cursor.close()
+    db.close()
 
     return render_template(
         "booking.html",
@@ -71,19 +77,22 @@ def check_availability():
         date=date,
         available=available
     )
+
 # Confirmation page
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
-
     venue_id = request.form["venue_id"]
     date = request.form["date"]
     time_slot = request.form["time_slot"]
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("SELECT * FROM venues WHERE id=%s", (venue_id,))
     venue = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not venue:
+        abort(404)
 
     return render_template(
         "confirm.html",
@@ -95,7 +104,6 @@ def confirm_booking():
 # Final booking
 @app.route("/book", methods=["POST"])
 def book():
-
     venue_id = request.form["venue_id"]
     date = request.form["date"]
     time_slot = request.form["time_slot"]
@@ -103,42 +111,49 @@ def book():
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute(
-        "INSERT INTO bookings (venue_id,date,time_slot) VALUES (%s,%s,%s)",
-        (venue_id, date, time_slot)
-    )
-
-    db.commit()
+    try:
+        cursor.execute(
+            "INSERT INTO bookings (venue_id, date, time_slot) VALUES (%s, %s, %s)",
+            (venue_id, date, time_slot)
+        )
+        db.commit()
+    except mysql.connector.IntegrityError:
+        # This will happen if you add a unique constraint on (venue_id, date, time_slot)
+        db.rollback()
+        return "This slot is already booked. Please go back and choose another time.", 400
+    except Exception as e:
+        db.rollback()
+        return f"An error occurred: {str(e)}", 500
+    finally:
+        cursor.close()
+        db.close()
 
     return redirect(url_for("my_bookings"))
 
 # My bookings page
 @app.route("/my_bookings")
 def my_bookings():
-
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("""
     SELECT bookings.id, venues.name, bookings.date, bookings.time_slot
     FROM bookings
     JOIN venues ON bookings.venue_id = venues.id
     """)
-
     bookings = cursor.fetchall()
-
+    cursor.close()
+    db.close()
     return render_template("my_bookings.html", bookings=bookings)
 
 # Delete booking
 @app.route("/delete_booking/<int:id>")
 def delete_booking(id):
-
     db = get_db()
     cursor = db.cursor()
-
     cursor.execute("DELETE FROM bookings WHERE id=%s", (id,))
     db.commit()
-
+    cursor.close()
+    db.close()
     return redirect(url_for("my_bookings"))
 
 @app.route("/health")
