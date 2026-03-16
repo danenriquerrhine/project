@@ -143,7 +143,7 @@ def my_bookings():
     bookings = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template("my_booking.html", bookings=bookings)   # ← changed to my_booking.html
+    return render_template("my_booking.html", bookings=bookings)   # ← change to my_booking.html
 
 # Delete booking
 @app.route("/delete_booking/<int:id>")
