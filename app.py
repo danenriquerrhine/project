@@ -130,7 +130,7 @@ def book():
 
     return redirect(url_for("my_bookings"))
 
-# My bookings page
+# My bookings page – now renders "my_booking.html" (without 's')
 @app.route("/my_bookings")
 def my_bookings():
     db = get_db()
@@ -143,7 +143,7 @@ def my_bookings():
     bookings = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template("my_bookings.html", bookings=bookings)
+    return render_template("my_booking.html", bookings=bookings)   # ← changed to my_booking.html
 
 # Delete booking
 @app.route("/delete_booking/<int:id>")
