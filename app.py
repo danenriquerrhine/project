@@ -112,15 +112,20 @@ def book():
     cursor = db.cursor()
 
     try:
+        # Generate a new ID
+        cursor.execute("SELECT MAX(id) FROM bookings")
+        max_id = cursor.fetchone()[0]
+        new_id = (max_id if max_id is not None else 0) + 1
+
         cursor.execute(
-            "INSERT INTO bookings (venue_id, date, time_slot) VALUES (%s, %s, %s)",
-            (venue_id, date, time_slot)
+            "INSERT INTO bookings (id, venue_id, date, time_slot) VALUES (%s, %s, %s, %s)",
+            (new_id, venue_id, date, time_slot)
         )
         db.commit()
-    except mysql.connector.IntegrityError:
-        # This will happen if you add a unique constraint on (venue_id, date, time_slot)
+    except mysql.connector.IntegrityError as e:
         db.rollback()
-        return "This slot is already booked. Please go back and choose another time.", 400
+        # If duplicate entry, show error
+        return f"Booking failed: {str(e)}", 400
     except Exception as e:
         db.rollback()
         return f"An error occurred: {str(e)}", 500
