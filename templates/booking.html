@@ -1,89 +1,36 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
-<title>{{ venue.name }}</title>
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-<style>
-
-body{
-font-family:Arial;
-background:#f2f2f2;
-margin:0;
-}
-
-.venue-page{
-max-width:900px;
-margin:auto;
-padding:40px;
-background:white;
-}
-
-.venue-page img{
-width:100%;
-border-radius:10px;
-margin-top:20px;
-}
-
-.back{
-display:inline-block;
-margin-bottom:20px;
-color:#3f5683;
-text-decoration:none;
-}
-
-.booking-box{
-margin-top:40px;
-padding:20px;
-background:#f7f7f7;
-border-radius:10px;
-}
-
-</style>
-
+<title>Select Time</title>
 </head>
 
 <body>
 
-<div class="venue-page">
+<h2>Available Time Slots</h2>
 
-<a href="/" class="back">← Back to Homepage</a>
+<p>Venue: {{ venue.name }}</p>
+<p>Date: {{ date }}</p>
 
-<h1>{{ venue.name }}</h1>
+<form action="/confirm_booking" method="POST">
 
-<p><b>Location:</b> {{ venue.location }}</p>
+<input type="hidden" name="venue_id" value="{{ venue_id }}">
+<input type="hidden" name="date" value="{{ date }}">
 
-<img src="{{ venue.image }}">
+<label>Select Time:</label>
 
-<p><b>Rating:</b> {{ venue.rating }}</p>
+<select name="time_slot" required>
 
-<p><b>Reviews:</b> {{ venue.reviews }}</p>
+{% for slot in available %}
+<option value="{{ slot }}">{{ slot }}</option>
+{% endfor %}
 
-<p>{{ venue.description }}</p>
-
-<div class="booking-box">
-
-<h2>Book This Venue</h2>
-
-<form action="/check_availability" method="post">
-
-<input type="hidden" name="venue_id" value="{{ venue.id }}">
-
-<label>Select Date:</label><br>
-<input type="date" name="date" required>
+</select>
 
 <br><br>
 
-<button type="submit">Check Availability</button>
+<button type="submit">Continue</button>
 
 </form>
-
-</div>
-
-</div>
 
 </body>
 </html>
