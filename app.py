@@ -62,6 +62,7 @@ def check_availability():
     ]
 
     available = [slot for slot in all_slots if slot not in booked]
+    print("%$%$%$%$%$%$%$%#@#@#@##@#@#@#@#@#@#@#@#!@@!@!@!@!@!@!@!@!@@!*(*(*(*()()(()(")
 
     return render_template(
         "booking.html",
