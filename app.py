@@ -10,19 +10,22 @@ def get_db():
         user="root",
         password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
         database="railway",
-        port=53099
+        port=53099,
+        connection_timeout=10   # seconds
     )
-
 # Homepage
 @app.route("/")
 def homepage():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM venues")
-    venues = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return render_template("Homepage.html", venues=venues)
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM venues")
+        venues = cursor.fetchall()
+        cursor.close()
+        db.close()
+        return render_template("Homepage.html", venues=venues)
+    except mysql.connector.Error as err:
+        return f"Database error: {err}", 500
 
 # Venue Page
 @app.route("/venue/<int:venue_id>")
@@ -104,15 +107,15 @@ def confirm_booking():
 # Final booking
 @app.route("/book", methods=["POST"])
 def book():
-    venue_id = request.form["venue_id"]
-    date = request.form["date"]
-    time_slot = request.form["time_slot"]
-
-    db = get_db()
-    cursor = db.cursor()
-
     try:
-        # Generate a new ID
+        venue_id = request.form["venue_id"]
+        date = request.form["date"]
+        time_slot = request.form["time_slot"]
+
+        db = get_db()
+        cursor = db.cursor()
+
+        # Generate new ID
         cursor.execute("SELECT MAX(id) FROM bookings")
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
@@ -122,18 +125,13 @@ def book():
             (new_id, venue_id, date, time_slot)
         )
         db.commit()
-    except mysql.connector.IntegrityError as e:
-        db.rollback()
-        # If duplicate entry, show error
-        return f"Booking failed: {str(e)}", 400
-    except Exception as e:
-        db.rollback()
-        return f"An error occurred: {str(e)}", 500
-    finally:
         cursor.close()
         db.close()
-
-    return redirect(url_for("my_bookings"))
+        return redirect(url_for("my_bookings"))
+    except mysql.connector.Error as err:
+        return f"Database error: {err}", 500
+    except Exception as e:
+        return f"Unexpected error: {e}", 500
 
 # My bookings page – now renders "my_booking.html" (without 's')
 @app.route("/my_bookings")
