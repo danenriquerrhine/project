@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>My Bookings</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+<style>
+
+.container{
+max-width:900px;
+margin:auto;
+padding:40px;
+background:white;
+margin-top:40px;
+border-radius:10px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #ddd;
+text-align:left;
+}
+
+th{
+background:#3f5683;
+color:white;
+}
+
+.delete{
+color:red;
+text-decoration:none;
+font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>My Bookings</h1>
+
+<table>
+
+<tr>
+<th>Venue</th>
+<th>Date</th>
+<th>Time</th>
+<th>Action</th>
+</tr>
+
+{% for b in bookings %}
+
+<tr>
+
+<td>{{ b.name }}</td>
+<td>{{ b.date }}</td>
+<td>{{ b.time_slot }}</td>
+
+<td>
+<a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a>
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+<br>
+
+<a href="/">← Back to Homepage</a>
+
+</div>
+
+</body>
+
+</html>
