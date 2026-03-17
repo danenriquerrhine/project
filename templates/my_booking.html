@@ -1,14 +1,9 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
 <title>My Bookings</title>
-
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
 <style>
-
 .container{
 max-width:900px;
 margin:auto;
@@ -17,73 +12,79 @@ background:white;
 margin-top:40px;
 border-radius:10px;
 }
-
 table{
 width:100%;
 border-collapse:collapse;
 margin-top:20px;
 }
-
 th,td{
 padding:12px;
 border-bottom:1px solid #ddd;
 text-align:left;
 }
-
 th{
 background:#3f5683;
 color:white;
 }
-
 .delete{
 color:red;
 text-decoration:none;
 font-weight:bold;
 }
-
+.flashes {
+    list-style: none;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+.flash-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+.flash-error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
 </style>
-
 </head>
-
 <body>
 
 <div class="container">
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="flash-{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
 <h1>My Bookings</h1>
 
 <table>
-
 <tr>
 <th>Venue</th>
+<th>Location</th>
 <th>Date</th>
 <th>Time</th>
 <th>Action</th>
 </tr>
-
 {% for b in bookings %}
-
 <tr>
-
 <td>{{ b.name }}</td>
+<td>{{ b.location }}</td>
 <td>{{ b.date }}</td>
 <td>{{ b.time_slot }}</td>
-
-<td>
-<a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a>
-</td>
-
+<td><a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a></td>
 </tr>
-
 {% endfor %}
-
 </table>
-
 <br>
-
 <a href="/">← Back to Homepage</a>
-
 </div>
-
 </body>
-
 </html>
