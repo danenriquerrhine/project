@@ -1,136 +1,161 @@
 /* General Page Styling */
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f2f2f2;
+    transition: background-color 0.3s, color 0.3s;
+}
 
-body{
-margin:0;
-font-family:Arial, Helvetica, sans-serif;
-background:#f2f2f2;
+/* Dark mode class */
+body.dark-mode {
+    background: #121212;
+    color: #e0e0e0;
 }
 
 /* Header */
-
-.header{
-background:#3f5683;
-color:white;
-padding:60px;
-font-size:48px;
-font-weight:300;
+.header {
+    background: #3f5683;
+    color: white;
+    padding: 60px;
+    font-size: 48px;
+    font-weight: 300;
+    transition: background-color 0.3s;
+}
+body.dark-mode .header {
+    background: #1e2a44; /* darker shade */
 }
 
 /* Section */
-
-.section{
-padding:40px;
+.section {
+    padding: 40px;
 }
 
 /* Venue Grid Layout */
-
-.venue-container{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-gap:25px;
-margin-top:30px;
+.venue-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
 }
 
 /* Venue Card */
-.venue-card{
-    background:white;
-    border-radius:10px;
-    overflow:hidden;
-    box-shadow:0 4px 10px rgba(0,0,0,0.1);
-    transition:0.3s;
+.venue-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s, background-color 0.3s, box-shadow 0.3s;
 }
-
-.venue-card:hover{
-    transform:translateY(-5px);
+.venue-card:hover {
+    transform: translateY(-5px);
+}
+body.dark-mode .venue-card {
+    background: #1e1e1e;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 /* Venue Image */
-
-.venue-card img{
-    width:100%;
-    aspect-ratio:16/9;
-    object-fit:cover;
-    display:block;
+.venue-card img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
 }
 
 /* Venue Info */
-
-.venue-info{
-padding:15px;
+.venue-info {
+    padding: 15px;
 }
 
-.venue-title{
-font-size:18px;
-font-weight:bold;
-margin-bottom:5px;
+.venue-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+body.dark-mode .venue-title {
+    color: #ffffff;
 }
 
-.location{
-color:#666;
-font-size:14px;
-margin-bottom:10px;
+.location {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+body.dark-mode .location {
+    color: #aaa;
 }
 
 /* Rating */
-
-.rating{
-background:#003580;
-color:white;
-display:inline-block;
-padding:4px 7px;
-border-radius:4px;
-font-size:13px;
-margin-right:6px;
+.rating {
+    background: #003580;
+    color: white;
+    display: inline-block;
+    padding: 4px 7px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-right: 6px;
+}
+body.dark-mode .rating {
+    background: #1a4d8c;
 }
 
-.reviews{
-font-size:13px;
-color:#444;
+.reviews {
+    font-size: 13px;
+    color: #444;
+}
+body.dark-mode .reviews {
+    color: #bbb;
 }
 
 /* Description */
-
-.description{
-font-size:14px;
-margin-top:10px;
-color:#555;
+.description {
+    font-size: 14px;
+    margin-top: 10px;
+    color: #555;
+}
+body.dark-mode .description {
+    color: #ccc;
 }
 
 /* Venue link (clickable card) */
-
-.venue-link{
-text-decoration:none;
-color:inherit;
-display:block;
+.venue-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
 }
 
 /* Full Venue Page */
-
-.venue-page{
-max-width:900px;
-margin:auto;
-padding:40px;
-background:white;
+.venue-page {
+    max-width: 900px;
+    margin: auto;
+    padding: 40px;
+    background: white;
+    transition: background-color 0.3s;
+}
+body.dark-mode .venue-page {
+    background: #1e1e1e;
 }
 
-.venue-page img{
-width:100%;
-height:auto;
-border-radius:10px;
-margin-top:20px;
+.venue-page img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin-top: 20px;
 }
 
 /* Back Button */
-
-.back{
-display:inline-block;
-margin-bottom:20px;
-color:#3f5683;
-text-decoration:none;
-font-weight:bold;
+.back {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #3f5683;
+    text-decoration: none;
+    font-weight: bold;
+}
+body.dark-mode .back {
+    color: #8a9fd1;
 }
 
-/* Flash Messages - Colored by Category */
+/* Flash Messages */
 .flashes {
     list-style: none;
     padding: 12px 20px;
@@ -142,8 +167,92 @@ font-weight:bold;
     color: #155724;
     border-left: 4px solid #28a745;
 }
+body.dark-mode .flash-success {
+    background: #1e3a2a;
+    color: #b8e0b8;
+    border-left-color: #4caf50;
+}
 .flash-error {
     background: #f8d7da;
     color: #721c24;
     border-left: 4px solid #dc3545;
+}
+body.dark-mode .flash-error {
+    background: #3e2628;
+    color: #f5b5b5;
+    border-left-color: #ff6b6b;
+}
+
+/* Dark mode toggle button */
+.theme-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #3f5683;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    transition: background 0.3s;
+}
+.theme-toggle:hover {
+    background: #2f456b;
+}
+body.dark-mode .theme-toggle {
+    background: #f0c040;
+    color: #121212;
+}
+body.dark-mode .theme-toggle:hover {
+    background: #e0b030;
+}
+
+/* Booking boxes (confirm, booking, etc.) */
+.container, .booking-box {
+    background: white;
+    transition: background-color 0.3s;
+}
+body.dark-mode .container,
+body.dark-mode .booking-box {
+    background: #1e1e1e;
+}
+
+/* Tables */
+table {
+    background: white;
+    transition: background-color 0.3s;
+}
+body.dark-mode table {
+    background: #1e1e1e;
+}
+th {
+    background: #3f5683;
+    color: white;
+}
+body.dark-mode th {
+    background: #2d3f5e;
+}
+td {
+    border-bottom: 1px solid #ddd;
+}
+body.dark-mode td {
+    border-bottom: 1px solid #444;
+}
+
+/* Inputs, selects, buttons */
+input, select, button {
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+body.dark-mode input,
+body.dark-mode select {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #555;
+}
+body.dark-mode button {
+    background: #2f456b;
+    color: white;
 }
