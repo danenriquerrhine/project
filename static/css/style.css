@@ -22,7 +22,7 @@ body.dark-mode {
     transition: background-color 0.3s;
 }
 body.dark-mode .header {
-    background: #1e2a44; /* darker shade */
+    background: #1e2a44;
 }
 
 /* Section */
