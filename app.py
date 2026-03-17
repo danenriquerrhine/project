@@ -1,22 +1,32 @@
 from flask import Flask, render_template, request, redirect, url_for, abort, flash, session
 from datetime import datetime, date
 import mysql.connector
+from mysql.connector import errorcode
 import os
 import sys
+import time
 
 app = Flask(__name__, template_folder="templates")
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Change this!
 
+# -------------------- Database connection with timeout --------------------
 def get_db():
-    return mysql.connector.connect(
-        host="interchange.proxy.rlwy.net",
-        user="root",
-        password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
-        database="railway",
-        port=53099
-    )
+    try:
+        conn = mysql.connector.connect(
+            host="interchange.proxy.rlwy.net",
+            user="root",
+            password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
+            database="railway",
+            port=53099,
+            connection_timeout=10,      # seconds
+            use_pure=True                # forces Python implementation (more reliable)
+        )
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Database connection error: {err}", file=sys.stderr)
+        raise  # re-raise to be caught by route error handlers
 
-# Homepage
+# -------------------- Routes --------------------
 @app.route("/")
 def homepage():
     try:
@@ -27,11 +37,15 @@ def homepage():
         cursor.close()
         db.close()
         return render_template("Homepage.html", venues=venues)
-    except Exception as e:
+    except mysql.connector.Error as e:
         flash(f"Database error: {e}", "error")
+        print(f"Homepage DB error: {e}", file=sys.stderr)
+        return render_template("Homepage.html", venues=[])
+    except Exception as e:
+        flash(f"Unexpected error: {e}", "error")
+        print(f"Homepage error: {e}", file=sys.stderr)
         return render_template("Homepage.html", venues=[])
 
-# Venue Page
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
     try:
@@ -45,11 +59,15 @@ def venue_page(venue_id):
             abort(404)
         today = date.today().isoformat()
         return render_template("venue.html", venue=venue, today=today)
+    except mysql.connector.Error as e:
+        flash(f"Database error: {e}", "error")
+        print(f"Venue page DB error: {e}", file=sys.stderr)
+        return redirect(url_for('homepage'))
     except Exception as e:
         flash(f"Error loading venue: {e}", "error")
+        print(f"Venue page error: {e}", file=sys.stderr)
         return redirect(url_for('homepage'))
 
-# Check available time slots
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
     if 'user_id' not in session:
@@ -92,11 +110,15 @@ def check_availability():
             date=date_str,
             available=available
         )
+    except mysql.connector.Error as e:
+        flash(f"Database error: {e}", "error")
+        print(f"Check availability DB error: {e}", file=sys.stderr)
+        return redirect(url_for('venue_page', venue_id=venue_id))
     except Exception as e:
         flash(f"Error checking availability: {e}", "error")
+        print(f"Check availability error: {e}", file=sys.stderr)
         return redirect(url_for('venue_page', venue_id=venue_id))
 
-# Confirmation page
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
     if 'user_id' not in session:
@@ -123,11 +145,15 @@ def confirm_booking():
             date=date,
             time_slot=time_slot
         )
+    except mysql.connector.Error as e:
+        flash(f"Database error: {e}", "error")
+        print(f"Confirm booking DB error: {e}", file=sys.stderr)
+        return redirect(url_for('homepage'))
     except Exception as e:
         flash(f"Error: {e}", "error")
+        print(f"Confirm booking error: {e}", file=sys.stderr)
         return redirect(url_for('homepage'))
 
-# Final booking
 @app.route("/book", methods=["POST"])
 def book():
     if 'user_id' not in session:
@@ -153,16 +179,24 @@ def book():
         )
         db.commit()
         flash("Booking successful!", "success")
+    except mysql.connector.IntegrityError as e:
+        db.rollback()
+        flash(f"This slot may already be booked: {e}", "error")
+        print(f"Booking integrity error: {e}", file=sys.stderr)
+    except mysql.connector.Error as e:
+        db.rollback()
+        flash(f"Database error: {e}", "error")
+        print(f"Booking DB error: {e}", file=sys.stderr)
     except Exception as e:
         db.rollback()
         flash(f"Booking failed: {e}", "error")
+        print(f"Booking error: {e}", file=sys.stderr)
     finally:
         cursor.close()
         db.close()
 
     return redirect(url_for("my_bookings"))
 
-# My bookings page
 @app.route("/my_bookings")
 def my_bookings():
     if 'user_id' not in session:
@@ -182,11 +216,15 @@ def my_bookings():
         cursor.close()
         db.close()
         return render_template("my_booking.html", bookings=bookings)
+    except mysql.connector.Error as e:
+        flash(f"Database error: {e}", "error")
+        print(f"My bookings DB error: {e}", file=sys.stderr)
+        return redirect(url_for('homepage'))
     except Exception as e:
         flash(f"Error loading bookings: {e}", "error")
+        print(f"My bookings error: {e}", file=sys.stderr)
         return redirect(url_for('homepage'))
 
-# Delete booking
 @app.route("/delete_booking/<int:id>")
 def delete_booking(id):
     if 'user_id' not in session:
@@ -201,8 +239,12 @@ def delete_booking(id):
         cursor.close()
         db.close()
         flash("Booking cancelled.", "success")
+    except mysql.connector.Error as e:
+        flash(f"Database error: {e}", "error")
+        print(f"Delete booking DB error: {e}", file=sys.stderr)
     except Exception as e:
         flash(f"Error cancelling booking: {e}", "error")
+        print(f"Delete booking error: {e}", file=sys.stderr)
     return redirect(url_for("my_bookings"))
 
 # -------------------- Authentication --------------------
@@ -229,8 +271,12 @@ def login():
                 return redirect(url_for('homepage'))
             else:
                 flash("Username not found. Please sign up.", "error")
+        except mysql.connector.Error as e:
+            flash(f"Database error: {e}", "error")
+            print(f"Login DB error: {e}", file=sys.stderr)
         except Exception as e:
             flash(f"Login error: {e}", "error")
+            print(f"Login error: {e}", file=sys.stderr)
     return render_template("login.html")
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -267,6 +313,11 @@ def signup():
             db.commit()
             flash("Signup successful! Please log in.", "success")
             return redirect(url_for('login'))
+        except mysql.connector.IntegrityError as e:
+            if db:
+                db.rollback()
+            flash(f"Username already exists or database error: {e}", "error")
+            print(f"Signup integrity error: {e}", file=sys.stderr)
         except mysql.connector.Error as e:
             if db:
                 db.rollback()
