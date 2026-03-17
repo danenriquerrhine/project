@@ -129,3 +129,21 @@ color:#3f5683;
 text-decoration:none;
 font-weight:bold;
 }
+
+/* Flash Messages - Colored by Category */
+.flashes {
+    list-style: none;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+.flash-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+.flash-error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
