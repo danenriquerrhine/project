@@ -3,6 +3,7 @@ body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
     background: #f2f2f2;
+    color: #000000;
     transition: background-color 0.3s, color 0.3s;
 }
 
@@ -71,6 +72,7 @@ body.dark-mode .venue-card {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 5px;
+    color: #000;
 }
 body.dark-mode .venue-title {
     color: #ffffff;
@@ -131,9 +133,11 @@ body.dark-mode .description {
     padding: 40px;
     background: white;
     transition: background-color 0.3s;
+    color: #000;
 }
 body.dark-mode .venue-page {
     background: #1e1e1e;
+    color: #e0e0e0;
 }
 
 .venue-page img {
@@ -214,19 +218,47 @@ body.dark-mode .theme-toggle:hover {
 .container, .booking-box {
     background: white;
     transition: background-color 0.3s;
+    color: #000;
 }
 body.dark-mode .container,
 body.dark-mode .booking-box {
     background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* Headings inside containers */
+.container h1, .container h2, .container h3,
+.booking-box h1, .booking-box h2, .booking-box h3,
+.venue-page h1, .venue-page h2, .venue-page h3 {
+    color: inherit;
+}
+
+/* Paragraphs and text */
+.container p, .booking-box p, .venue-page p {
+    color: inherit;
+}
+
+/* Links inside containers (except buttons) */
+.container a:not(.btn):not(.theme-toggle),
+.booking-box a:not(.btn):not(.theme-toggle),
+.venue-page a:not(.btn):not(.theme-toggle) {
+    color: #3f5683;
+}
+body.dark-mode .container a:not(.btn):not(.theme-toggle),
+body.dark-mode .booking-box a:not(.btn):not(.theme-toggle),
+body.dark-mode .venue-page a:not(.btn):not(.theme-toggle) {
+    color: #8a9fd1;
 }
 
 /* Tables */
 table {
     background: white;
     transition: background-color 0.3s;
+    color: #000;
 }
 body.dark-mode table {
     background: #1e1e1e;
+    color: #e0e0e0;
 }
 th {
     background: #3f5683;
@@ -237,6 +269,7 @@ body.dark-mode th {
 }
 td {
     border-bottom: 1px solid #ddd;
+    color: inherit;
 }
 body.dark-mode td {
     border-bottom: 1px solid #444;
@@ -255,4 +288,9 @@ body.dark-mode select {
 body.dark-mode button {
     background: #2f456b;
     color: white;
+}
+
+/* Ensure body background covers entire viewport */
+html, body {
+    min-height: 100vh;
 }
