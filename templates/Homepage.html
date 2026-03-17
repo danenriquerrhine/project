@@ -1,19 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Venue Booking Website</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+}
+.header {
+    background: #3f5683;
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 24px;
+    position: relative;
+}
+.logo {
+    font-weight: 500;
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.btn {
+    font-size: 15px;
+    background: white;
+    color: #3f5683;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s;
+    border: none;
+    cursor: pointer;
+}
+.btn:hover {
+    background: #e6e6e6;
+}
+.greeting {
+    color: white;
+    font-size: 16px;
+    margin-right: 5px;
+}
+.menu-toggle {
+    display: block;
+    font-size: 28px;
+    cursor: pointer;
+    color: white;
+    background: none;
+    border: none;
+    padding: 0 10px;
+}
+.menu-dropdown {
+    position: absolute;
+    top: 70px;
+    right: 30px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    z-index: 1000;
+}
+.menu-dropdown a {
+    padding: 12px 24px;
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
+}
+.menu-dropdown a:last-child {
+    border-bottom: none;
+}
+.menu-dropdown a:hover {
+    background: #f5f5f5;
+}
+.menu-dropdown.show {
+    display: flex;
+}
+.flashes {
+    list-style: none;
+    padding: 12px 30px;
+    margin: 0;
+    font-size: 15px;
+}
+.flash-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+.flash-error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+.section {
+    padding: 40px 30px;
+}
+h2 {
+    margin-top: 0;
+    font-weight: 400;
+    color: #333;
+}
+.venue-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+.venue-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+.venue-card:hover {
+    transform: translateY(-6px);
+}
+.venue-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+.venue-info {
+    padding: 15px;
+}
+.venue-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+.location {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.rating {
+    background: #003580;
+    color: white;
+    padding: 4px 7px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.venue-link {
+    text-decoration: none;
+    color: inherit;
+}
+@media (max-width: 600px) {
+    .header {
+        padding: 15px 20px;
+        font-size: 20px;
+    }
+    .btn, .greeting {
+        font-size: 14px;
+        padding: 5px 10px;
+    }
+    .menu-toggle {
+        font-size: 26px;
+    }
+    .menu-dropdown {
+        top: 60px;
+        right: 20px;
+    }
+}
+</style>
+</head>
+<body>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="flash-{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<div class="header">
+    <div class="logo">Venue Booking</div>
+    <div class="header-right">
+        <a href="{{ url_for('my_bookings') }}" class="btn">My Bookings</a>
+        {% if session.username %}
+            <span class="greeting">Hi, {{ session.name }}</span>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn">Login</a>
+        {% endif %}
+        <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+    </div>
+</div>
+
+<div class="menu-dropdown" id="menuDropdown">
+    {% if session.username %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+        <a href="{{ url_for('signup') }}">Sign Up</a>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Popular Venues</h2>
+    <div class="venue-container">
+    {% for venue in venues %}
+        <a href="{{ url_for('venue_page', venue_id=venue.id) }}" class="venue-link">
+        <div class="venue-card">
+            <img src="{{ venue.image }}" alt="{{ venue.name }}">
+            <div class="venue-info">
+                <div class="venue-title">{{ venue.name }}</div>
+                <div class="location">{{ venue.location }}</div>
+                <div><span class="rating">{{ venue.rating }}</span></div>
+                <p>{{ venue.description }}</p>
+            </div>
+        </div>
+        </a>
+    {% endfor %}
+    </div>
+</div>
+
 <!-- Dark mode toggle button -->
 <button class="theme-toggle" id="themeToggle">🌙 Dark Mode</button>
 
 <script>
-// Theme toggle functionality
+// Hamburger menu toggle
+function toggleMenu() {
+    document.getElementById("menuDropdown").classList.toggle("show");
+}
+window.onclick = function(event) {
+    if (!event.target.matches('.menu-toggle')) {
+        var menu = document.getElementById("menuDropdown");
+        if (menu.classList.contains('show')) {
+            menu.classList.remove('show');
+        }
+    }
+}
+
+// Dark mode toggle
 (function() {
     const toggle = document.getElementById('themeToggle');
     const body = document.body;
 
-    // Check localStorage for saved theme
+    // Load saved theme
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
         body.classList.add('dark-mode');
         toggle.textContent = '☀️ Light Mode';
     }
 
+    // Toggle on click
     toggle.addEventListener('click', () => {
         body.classList.toggle('dark-mode');
         const isDark = body.classList.contains('dark-mode');
@@ -22,3 +266,6 @@
     });
 })();
 </script>
+
+</body>
+</html>
