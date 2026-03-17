@@ -78,7 +78,6 @@ border-radius:10px;
 <form action="/check_availability" method="post" id="bookingForm">
 <input type="hidden" name="venue_id" value="{{ venue.id }}">
 <label>Select Date:</label>
-<!-- min attribute blocks past dates in most browsers -->
 <input type="date" name="date" id="datePicker" min="{{ today }}" required>
 <br><br>
 <button type="submit">Check Availability</button>
@@ -87,10 +86,8 @@ border-radius:10px;
 
 </div>
 
-<!-- JavaScript fallback to ensure no past dates can be selected -->
 <script>
 (function() {
-    // Get today's date in YYYY-MM-DD format (local time)
     function getTodayLocal() {
         const today = new Date();
         const year = today.getFullYear();
@@ -101,13 +98,7 @@ border-radius:10px;
 
     const dateInput = document.getElementById('datePicker');
     if (dateInput) {
-        // Set the min attribute to today's local date (overrides server value if different)
         dateInput.min = getTodayLocal();
-
-        // Optional: also set a default value to today (can be removed if you want user to pick)
-        // dateInput.value = getTodayLocal();
-
-        // Validate on form submit as well (extra safety)
         document.getElementById('bookingForm').addEventListener('submit', function(e) {
             const selectedDate = dateInput.value;
             if (selectedDate < getTodayLocal()) {
@@ -118,6 +109,5 @@ border-radius:10px;
     }
 })();
 </script>
-
 </body>
 </html>
