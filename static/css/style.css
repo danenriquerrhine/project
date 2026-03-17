@@ -7,10 +7,10 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
-/* Dark mode class */
+/* Dark mode class - FORCE EVERYTHING */
 body.dark-mode {
-    background: #121212;
-    color: #e0e0e0;
+    background: #121212 !important;
+    color: #e0e0e0 !important;
 }
 
 /* Header */
@@ -23,7 +23,8 @@ body.dark-mode {
     transition: background-color 0.3s;
 }
 body.dark-mode .header {
-    background: #1e2a44;
+    background: #1e2a44 !important;
+    color: white !important;
 }
 
 /* Section */
@@ -51,8 +52,8 @@ body.dark-mode .header {
     transform: translateY(-5px);
 }
 body.dark-mode .venue-card {
-    background: #1e1e1e;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    background: #1e1e1e !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
 }
 
 /* Venue Image */
@@ -75,7 +76,7 @@ body.dark-mode .venue-card {
     color: #000;
 }
 body.dark-mode .venue-title {
-    color: #ffffff;
+    color: #ffffff !important;
 }
 
 .location {
@@ -84,7 +85,7 @@ body.dark-mode .venue-title {
     margin-bottom: 10px;
 }
 body.dark-mode .location {
-    color: #aaa;
+    color: #aaa !important;
 }
 
 /* Rating */
@@ -98,7 +99,8 @@ body.dark-mode .location {
     margin-right: 6px;
 }
 body.dark-mode .rating {
-    background: #1a4d8c;
+    background: #1a4d8c !important;
+    color: white !important;
 }
 
 .reviews {
@@ -106,7 +108,7 @@ body.dark-mode .rating {
     color: #444;
 }
 body.dark-mode .reviews {
-    color: #bbb;
+    color: #bbb !important;
 }
 
 /* Description */
@@ -116,7 +118,7 @@ body.dark-mode .reviews {
     color: #555;
 }
 body.dark-mode .description {
-    color: #ccc;
+    color: #ccc !important;
 }
 
 /* Venue link (clickable card) */
@@ -136,8 +138,8 @@ body.dark-mode .description {
     color: #000;
 }
 body.dark-mode .venue-page {
-    background: #1e1e1e;
-    color: #e0e0e0;
+    background: #1e1e1e !important;
+    color: #e0e0e0 !important;
 }
 
 .venue-page img {
@@ -156,7 +158,7 @@ body.dark-mode .venue-page {
     font-weight: bold;
 }
 body.dark-mode .back {
-    color: #8a9fd1;
+    color: #8a9fd1 !important;
 }
 
 /* Flash Messages */
@@ -172,9 +174,9 @@ body.dark-mode .back {
     border-left: 4px solid #28a745;
 }
 body.dark-mode .flash-success {
-    background: #1e3a2a;
-    color: #b8e0b8;
-    border-left-color: #4caf50;
+    background: #1e3a2a !important;
+    color: #b8e0b8 !important;
+    border-left-color: #4caf50 !important;
 }
 .flash-error {
     background: #f8d7da;
@@ -182,9 +184,9 @@ body.dark-mode .flash-success {
     border-left: 4px solid #dc3545;
 }
 body.dark-mode .flash-error {
-    background: #3e2628;
-    color: #f5b5b5;
-    border-left-color: #ff6b6b;
+    background: #3e2628 !important;
+    color: #f5b5b5 !important;
+    border-left-color: #ff6b6b !important;
 }
 
 /* Dark mode toggle button */
@@ -207,11 +209,11 @@ body.dark-mode .flash-error {
     background: #2f456b;
 }
 body.dark-mode .theme-toggle {
-    background: #f0c040;
-    color: #121212;
+    background: #f0c040 !important;
+    color: #121212 !important;
 }
 body.dark-mode .theme-toggle:hover {
-    background: #e0b030;
+    background: #e0b030 !important;
 }
 
 /* Booking boxes (confirm, booking, etc.) */
@@ -222,8 +224,8 @@ body.dark-mode .theme-toggle:hover {
 }
 body.dark-mode .container,
 body.dark-mode .booking-box {
-    background: #1e1e1e;
-    color: #e0e0e0;
+    background: #1e1e1e !important;
+    color: #e0e0e0 !important;
 }
 
 /* Headings inside containers */
@@ -232,10 +234,26 @@ body.dark-mode .booking-box {
 .venue-page h1, .venue-page h2, .venue-page h3 {
     color: inherit;
 }
+body.dark-mode .container h1,
+body.dark-mode .container h2,
+body.dark-mode .container h3,
+body.dark-mode .booking-box h1,
+body.dark-mode .booking-box h2,
+body.dark-mode .booking-box h3,
+body.dark-mode .venue-page h1,
+body.dark-mode .venue-page h2,
+body.dark-mode .venue-page h3 {
+    color: #ffffff !important;
+}
 
 /* Paragraphs and text */
 .container p, .booking-box p, .venue-page p {
     color: inherit;
+}
+body.dark-mode .container p,
+body.dark-mode .booking-box p,
+body.dark-mode .venue-page p {
+    color: #e0e0e0 !important;
 }
 
 /* Links inside containers (except buttons) */
@@ -247,7 +265,7 @@ body.dark-mode .booking-box {
 body.dark-mode .container a:not(.btn):not(.theme-toggle),
 body.dark-mode .booking-box a:not(.btn):not(.theme-toggle),
 body.dark-mode .venue-page a:not(.btn):not(.theme-toggle) {
-    color: #8a9fd1;
+    color: #8a9fd1 !important;
 }
 
 /* Tables */
@@ -257,22 +275,24 @@ table {
     color: #000;
 }
 body.dark-mode table {
-    background: #1e1e1e;
-    color: #e0e0e0;
+    background: #1e1e1e !important;
+    color: #e0e0e0 !important;
 }
 th {
     background: #3f5683;
     color: white;
 }
 body.dark-mode th {
-    background: #2d3f5e;
+    background: #2d3f5e !important;
+    color: white !important;
 }
 td {
     border-bottom: 1px solid #ddd;
     color: inherit;
 }
 body.dark-mode td {
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid #444 !important;
+    color: #e0e0e0 !important;
 }
 
 /* Inputs, selects, buttons */
@@ -281,16 +301,31 @@ input, select, button {
 }
 body.dark-mode input,
 body.dark-mode select {
-    background: #2d2d2d;
-    color: #e0e0e0;
-    border-color: #555;
+    background: #2d2d2d !important;
+    color: #e0e0e0 !important;
+    border-color: #555 !important;
 }
 body.dark-mode button {
-    background: #2f456b;
-    color: white;
+    background: #2f456b !important;
+    color: white !important;
 }
 
 /* Ensure body background covers entire viewport */
 html, body {
     min-height: 100vh;
+}
+
+/* Debug helper - remove after testing */
+.debug-mode-indicator {
+    display: none;
+}
+body.dark-mode .debug-mode-indicator {
+    display: block;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: red;
+    color: white;
+    padding: 5px;
+    z-index: 9999;
 }
