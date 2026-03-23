@@ -26,11 +26,6 @@ th{
 background:#3f5683;
 color:white;
 }
-.delete{
-color:red;
-text-decoration:none;
-font-weight:bold;
-}
 .status-pending{
 color:#ff9800;
 font-weight:bold;
@@ -42,6 +37,18 @@ font-weight:bold;
 .status-rejected{
 color:#f44336;
 font-weight:bold;
+}
+.cancel-btn {
+    background: none;
+    border: none;
+    color: #dc3545;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+}
+.cancel-btn:hover {
+    color: #a71d2a;
 }
 .flashes {
     list-style: none;
@@ -98,7 +105,7 @@ font-weight:bold;
             <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
             <td>
                 {% if b.status == 'pending' %}
-                    <span style="color: #ff9800;">Contact venue to cancel</span>
+                    <button class="cancel-btn" onclick="alert('Please contact the venue to cancel your booking.');">Cancel</button>
                 {% else %}
                     <span>—</span>
                 {% endif %}
