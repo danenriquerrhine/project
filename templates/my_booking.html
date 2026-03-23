@@ -84,7 +84,7 @@ font-weight:bold;
 
 <h1>My Bookings</h1>
 
-表
+<table>
     <thead>
         <tr>
             <th>Venue</th>
@@ -93,11 +93,11 @@ font-weight:bold;
             <th>Time</th>
             <th>Status</th>
             <th>Action</th>
-         </tr>
+        </tr>
     </thead>
     <tbody>
         {% for b in bookings %}
-        <tr>
+         <tr>
             <td>{{ b.name }}</td>
             <td>{{ b.location }}</td>
             <td>{{ b.date }}</td>
