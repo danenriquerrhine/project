@@ -16,9 +16,11 @@ def get_db():
         port=17244
     )
 
-# Helper: check if user is a venue admin (and not global admin)
+# Helper: check if user is a venue admin (and not global admin) AND has managed venues
 def is_venue_admin_only():
-    return session.get('is_venue_admin', False) and not session.get('is_admin', False)
+    return (session.get('is_venue_admin', False) and 
+            not session.get('is_admin', False) and 
+            session.get('managed_venues', []))
 
 # Helper to get managed venues for a user
 def get_managed_venues(user_id):
