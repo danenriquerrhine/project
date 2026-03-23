@@ -76,6 +76,7 @@ border-radius:10px;
 <p><b>Reviews:</b> {{ venue.reviews }}</p>
 <p>{{ venue.description }}</p>
 
+{% if not session.is_admin %}
 <div class="booking-box">
 <h2>Book This Venue</h2>
 <form action="/check_availability" method="post" id="bookingForm">
@@ -86,6 +87,7 @@ border-radius:10px;
 <button type="submit">Check Availability</button>
 </form>
 </div>
+{% endif %}
 
 </div>
 
