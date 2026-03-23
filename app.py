@@ -16,13 +16,11 @@ def get_db():
         port=17244
     )
 
-# Helper: check if user is a venue admin (and not global admin) AND has managed venues
 def is_venue_admin_only():
     return (session.get('is_venue_admin', False) and 
             not session.get('is_admin', False) and 
             session.get('managed_venues', []))
 
-# Helper to get managed venues for a user
 def get_managed_venues(user_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -35,10 +33,7 @@ def get_managed_venues(user_id):
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
-    # Redirect global admin to their dashboard
-    if session.get('is_admin'):
-        return redirect(url_for('admin_dashboard'))
-    # Redirect venue admin to their dashboard (if they have managed venues)
+    # Redirect venue admins to their dashboard (if they have managed venues)
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -55,10 +50,7 @@ def homepage():
 
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
-    # Redirect global admin to dashboard
-    if session.get('is_admin'):
-        return redirect(url_for('admin_dashboard'))
-    # Redirect venue admin to their dashboard
+    # Redirect venue admins to their dashboard
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -78,8 +70,9 @@ def venue_page(venue_id):
 
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
-    # Redirect global admin to dashboard
+    # Global admin cannot book
     if session.get('is_admin'):
+        flash("Admins cannot make bookings.", "error")
         return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
@@ -104,7 +97,6 @@ def check_availability():
         if not venue:
             abort(404)
 
-        # Only count approved bookings as unavailable
         cursor.execute(
             "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
             (venue_id, date_str)
@@ -130,8 +122,8 @@ def check_availability():
 
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
-    # Redirect global admin to dashboard
     if session.get('is_admin'):
+        flash("Admins cannot make bookings.", "error")
         return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
@@ -165,8 +157,8 @@ def confirm_booking():
 
 @app.route("/book", methods=["POST"])
 def book():
-    # Redirect global admin to dashboard
     if session.get('is_admin'):
+        flash("Admins cannot make bookings.", "error")
         return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
@@ -187,7 +179,6 @@ def book():
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
 
-        # Insert with status = 'pending'
         cursor.execute(
             "INSERT INTO bookings (id, venue_id, date, time_slot, user_id, status) VALUES (%s, %s, %s, %s, %s, %s)",
             (new_id, venue_id, date, time_slot, user_id, 'pending')
@@ -205,7 +196,6 @@ def book():
 
 @app.route("/my_bookings")
 def my_bookings():
-    # Redirect global admin to dashboard
     if session.get('is_admin'):
         return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
@@ -234,7 +224,6 @@ def my_bookings():
 
 @app.route("/delete_booking/<int:id>")
 def delete_booking(id):
-    # Redirect global admin to dashboard
     if session.get('is_admin'):
         return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
@@ -371,7 +360,6 @@ def admin_delete_booking(id):
 # -------------------- Venue Admin Routes --------------------
 @app.route("/venue_admin")
 def venue_admin_dashboard():
-    # Global admins should not access venue admin dashboard
     if session.get('is_admin'):
         return redirect(url_for('admin_dashboard'))
     if 'user_id' not in session:
@@ -470,7 +458,6 @@ def venue_admin_delete_booking(id):
         db = get_db()
         cursor = db.cursor(dictionary=True)
         
-        # Check authorization: booking must belong to a managed venue
         placeholders = ','.join(['%s'] * len(managed_venues))
         cursor.execute(f"""
             SELECT b.id FROM bookings b
