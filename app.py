@@ -9,14 +9,14 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 def get_db():
     return mysql.connector.connect(
-        host="interchange.proxy.rlwy.net",
+        host="centerbeam.proxy.rlwy.net",
         user="root",
-        password="YdcOxocVplrdfnIIFfHLSNUQGkOnDqiA",
+        password="ilJEXLbQaOSmBfiwCgLaaixyVyuOgHru",
         database="railway",
-        port=53099
+        port=17244
     )
 
-# Helper: get managed venues for a user
+# Helper to get managed venues for a user
 def get_managed_venues(user_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -81,6 +81,7 @@ def check_availability():
         if not venue:
             abort(404)
 
+        # Only count approved bookings as unavailable
         cursor.execute(
             "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
             (venue_id, date_str)
@@ -153,6 +154,7 @@ def book():
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
 
+        # Insert with status = 'pending'
         cursor.execute(
             "INSERT INTO bookings (id, venue_id, date, time_slot, user_id, status) VALUES (%s, %s, %s, %s, %s, %s)",
             (new_id, venue_id, date, time_slot, user_id, 'pending')
@@ -292,8 +294,9 @@ def assign_venue_admin():
         db = get_db()
         cursor = db.cursor()
 
-        cursor.execute("UPDATE venues SET venue_admin_id = NULL WHERE id = %s", (venue_id,))
-        if user_id != '0':
+        if user_id == '0':  # Unassign
+            cursor.execute("UPDATE venues SET venue_admin_id = NULL WHERE id = %s", (venue_id,))
+        else:  # Assign new admin
             cursor.execute("UPDATE venues SET venue_admin_id = %s WHERE id = %s", (user_id, venue_id))
             cursor.execute("UPDATE users SET is_venue_admin = 1 WHERE id = %s", (user_id,))
         db.commit()
