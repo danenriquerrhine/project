@@ -5,7 +5,7 @@ import os
 import sys
 
 app = Flask(__name__, template_folder="templates")
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Change this!
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 def get_db():
     return mysql.connector.connect(
@@ -16,7 +16,24 @@ def get_db():
         port=53099
     )
 
-# Homepage
+# Ensure password column exists
+def ensure_password_column():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'password'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE users ADD COLUMN password VARCHAR(255)")
+            db.commit()
+            print("Added password column to users table.")
+        cursor.close()
+        db.close()
+    except Exception as e:
+        print(f"Error ensuring password column: {e}")
+
+ensure_password_column()
+
+# -------------------- Routes --------------------
 @app.route("/")
 def homepage():
     try:
@@ -31,7 +48,6 @@ def homepage():
         flash(f"Database error: {e}", "error")
         return render_template("Homepage.html", venues=[])
 
-# Venue Page
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
     try:
@@ -49,7 +65,6 @@ def venue_page(venue_id):
         flash(f"Error loading venue: {e}", "error")
         return redirect(url_for('homepage'))
 
-# Check availability
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
     if 'user_id' not in session:
@@ -96,7 +111,6 @@ def check_availability():
         flash(f"Error checking availability: {e}", "error")
         return redirect(url_for('venue_page', venue_id=venue_id))
 
-# Confirm booking
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
     if 'user_id' not in session:
@@ -127,7 +141,6 @@ def confirm_booking():
         flash(f"Error: {e}", "error")
         return redirect(url_for('homepage'))
 
-# Final booking
 @app.route("/book", methods=["POST"])
 def book():
     if 'user_id' not in session:
@@ -162,7 +175,6 @@ def book():
 
     return redirect(url_for("my_bookings"))
 
-# My bookings
 @app.route("/my_bookings")
 def my_bookings():
     if 'user_id' not in session:
@@ -186,7 +198,6 @@ def my_bookings():
         flash(f"Error loading bookings: {e}", "error")
         return redirect(url_for('homepage'))
 
-# Delete booking
 @app.route("/delete_booking/<int:id>")
 def delete_booking(id):
     if 'user_id' not in session:
@@ -210,6 +221,7 @@ def delete_booking(id):
 def login():
     if request.method == "POST":
         username = request.form["username"]
+        password = request.form["password"]
         try:
             db = get_db()
             cursor = db.cursor(dictionary=True)
@@ -218,18 +230,17 @@ def login():
             cursor.close()
             db.close()
 
-            if user:
+            if user and user.get('password') == password:
                 session['user_id'] = user['id']
                 session['username'] = user['username']
                 session['name'] = user['name']
                 flash("Logged in successfully.", "success")
                 next_page = request.args.get('next')
-                # If next_page exists and is safe, redirect there; else go to homepage
                 if next_page and next_page.startswith('/'):
                     return redirect(next_page)
                 return redirect(url_for('homepage'))
             else:
-                flash("Username not found. Please sign up.", "error")
+                flash("Invalid username or password.", "error")
         except Exception as e:
             flash(f"Login error: {e}", "error")
     return render_template("login.html")
@@ -240,6 +251,16 @@ def signup():
         name = request.form["name"]
         username = request.form["username"]
         phone = request.form["phone"]
+        password = request.form["password"]
+
+        # Validate password
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.", "error")
+            return redirect(url_for('signup'))
+        # Check for at least one special character
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
+            flash("Password must contain at least one special character.", "error")
+            return redirect(url_for('signup'))
 
         if not name or not username or not phone:
             flash("All fields are required.", "error")
@@ -262,8 +283,8 @@ def signup():
             new_id = max_id + 1
 
             cursor.execute(
-                "INSERT INTO users (id, name, username, phone) VALUES (%s, %s, %s, %s)",
-                (new_id, name, username, phone)
+                "INSERT INTO users (id, name, username, phone, password) VALUES (%s, %s, %s, %s, %s)",
+                (new_id, name, username, phone, password)
             )
             db.commit()
             flash("Signup successful! Please log in.", "success")
