@@ -37,6 +37,20 @@
             background: #dc3545;
             color: white;
         }
+        .btn-approve { background: #4caf50; color: white; }
+        .btn-reject { background: #f44336; color: white; }
+        .btn-cancel {
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .btn-cancel:hover {
+            background: #c82333;
+        }
         .btn:hover {
             opacity: 0.8;
         }
@@ -57,8 +71,6 @@
         .status-pending { color: #ff9800; font-weight: bold; }
         .status-approved { color: #4caf50; font-weight: bold; }
         .status-rejected { color: #f44336; font-weight: bold; }
-        .btn-approve { background: #4caf50; color: white; }
-        .btn-reject { background: #f44336; color: white; }
         .flashes {
             list-style: none;
             padding: 12px 20px;
@@ -88,9 +100,9 @@
             {% endif %}
         {% endwith %}
 
-        <table>
+         <table>
             <thead>
-                <tr>
+                 <tr>
                     <th>ID</th>
                     <th>Venue</th>
                     <th>Location</th>
@@ -99,11 +111,12 @@
                     <th>Time</th>
                     <th>Status</th>
                     <th>Actions</th>
-                </tr>
+                    <th>Cancel</th>
+                 </tr>
             </thead>
             <tbody>
                 {% for b in bookings %}
-                <tr>
+                 <tr>
                     <td>{{ b.id }}</td>
                     <td>{{ b.name }}</td>
                     <td>{{ b.location }}</td>
@@ -125,10 +138,13 @@
                         <span>—</span>
                         {% endif %}
                     </td>
-                </tr>
+                    <td>
+                        <a href="/venue_admin/delete_booking/{{ b.id }}" class="btn-cancel" onclick="return confirm('Are you sure you want to cancel this booking? This action cannot be undone.');">Cancel</a>
+                    </td>
+                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+         </table>
     </div>
 </body>
 </html>
