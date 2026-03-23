@@ -98,9 +98,9 @@ font-weight:bold;
             <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
             <td>
                 {% if b.status == 'pending' %}
-                <a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a>
+                    <span style="color: #ff9800;">Contact venue to cancel</span>
                 {% else %}
-                <span>—</span>
+                    <span>—</span>
                 {% endif %}
             </td>
         </tr>
