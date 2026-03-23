@@ -190,7 +190,7 @@ h2 {
 
 <div class="header">
     <div class="logo">
-        {% if session.is_venue_admin and not session.is_admin %}
+        {% if session.is_venue_admin and not session.is_admin and session.managed_venues %}
             <a href="{{ url_for('venue_admin_dashboard') }}" style="color: white; text-decoration: none;">Venue Booking</a>
         {% else %}
             <a href="/" style="color: white; text-decoration: none;">Venue Booking</a>
@@ -202,8 +202,8 @@ h2 {
             <a href="{{ url_for('my_bookings') }}" class="btn">My Bookings</a>
         {% endif %}
 
-        <!-- Venue admins see "Venue Admin" -->
-        {% if session.is_venue_admin %}
+        <!-- Venue admins see "Venue Admin" only if they have managed venues -->
+        {% if session.is_venue_admin and session.managed_venues %}
             <a href="{{ url_for('venue_admin_dashboard') }}" class="btn">Venue Admin</a>
         {% endif %}
 
