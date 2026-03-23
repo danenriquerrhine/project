@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background: #3f5683;
+            color: white;
+        }
+        .status-pending {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .status-approved {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .status-rejected {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+        .btn-approve {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-reject {
+            background: #f44336;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .flashes {
+            list-style: none;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .flash-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .flash-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        .back {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3f5683;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back">← Back to Homepage</a>
+        <h1>Admin Dashboard – Manage Bookings</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="flash-{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Venue</th>
+                    <th>Location</th>
+                    <th>User</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td>{{ b.id }}</td>
+                    <td>{{ b.name }}</td>
+                    <td>{{ b.location }}</td>
+                    <td>{{ b.username }}</td>
+                    <td>{{ b.date }}</td>
+                    <td>{{ b.time_slot }}</td>
+                    <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
+                    <td>
+                        {% if b.status == 'pending' %}
+                        <form method="post" action="/admin/update_booking/{{ b.id }}" style="display:inline;">
+                            <input type="hidden" name="status" value="approved">
+                            <button type="submit" class="btn btn-approve">Approve</button>
+                        </form>
+                        <form method="post" action="/admin/update_booking/{{ b.id }}" style="display:inline;">
+                            <input type="hidden" name="status" value="rejected">
+                            <button type="submit" class="btn btn-reject">Reject</button>
+                        </form>
+                        {% else %}
+                        <span>—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
