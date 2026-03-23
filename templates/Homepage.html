@@ -192,6 +192,9 @@ h2 {
     <div class="logo">Venue Booking</div>
     <div class="header-right">
         <a href="{{ url_for('my_bookings') }}" class="btn">My Bookings</a>
+        {% if session.is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">Admin</a>
+        {% endif %}
         {% if session.username %}
             <span class="greeting">Hi, {{ session.name }}</span>
         {% else %}
