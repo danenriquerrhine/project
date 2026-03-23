@@ -68,6 +68,9 @@ border-radius:10px;
 
 <h1>{{ venue.name }}</h1>
 <p><b>Location:</b> {{ venue.location }}</p>
+{% if venue.contact_number %}
+    <p><b>Contact:</b> {{ venue.contact_number }}</p>
+{% endif %}
 <img src="{{ venue.image }}">
 <p><b>Rating:</b> {{ venue.rating }}</p>
 <p><b>Reviews:</b> {{ venue.reviews }}</p>
