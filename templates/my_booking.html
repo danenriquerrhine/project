@@ -26,6 +26,18 @@ th{
 background:#3f5683;
 color:white;
 }
+.delete{
+color:red;
+text-decoration:none;
+font-weight:bold;
+}
+.delete:hover{
+text-decoration:underline;
+}
+.contact-message{
+color:#ff9800;
+font-style:italic;
+}
 .status-pending{
 color:#ff9800;
 font-weight:bold;
@@ -37,18 +49,6 @@ font-weight:bold;
 .status-rejected{
 color:#f44336;
 font-weight:bold;
-}
-.cancel-btn {
-    background: none;
-    border: none;
-    color: #dc3545;
-    text-decoration: underline;
-    cursor: pointer;
-    font-size: inherit;
-    padding: 0;
-}
-.cancel-btn:hover {
-    color: #a71d2a;
 }
 .flashes {
     list-style: none;
@@ -84,7 +84,7 @@ font-weight:bold;
 
 <h1>My Bookings</h1>
 
-<table>
+表
     <thead>
         <tr>
             <th>Venue</th>
@@ -93,7 +93,7 @@ font-weight:bold;
             <th>Time</th>
             <th>Status</th>
             <th>Action</th>
-        </tr>
+         </tr>
     </thead>
     <tbody>
         {% for b in bookings %}
@@ -105,7 +105,9 @@ font-weight:bold;
             <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
             <td>
                 {% if b.status == 'pending' %}
-                    <button class="cancel-btn" onclick="alert('Please contact the venue to cancel your booking.');">Cancel</button>
+                    <a class="delete" href="/delete_booking/{{ b.id }}" onclick="return confirm('Are you sure you want to cancel this booking?');">Cancel</a>
+                {% elif b.status == 'approved' %}
+                    <span class="contact-message">Please contact the venue to cancel</span>
                 {% else %}
                     <span>—</span>
                 {% endif %}
@@ -114,6 +116,7 @@ font-weight:bold;
         {% endfor %}
     </tbody>
 </table>
+
 <br>
 <a href="/">← Back to Homepage</a>
 </div>
