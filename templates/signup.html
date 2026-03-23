@@ -58,7 +58,7 @@
                 </ul>
             {% endif %}
         {% endwith %}
-        <form method="post" id="signupForm">
+        <form method="post">
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="text" name="username" placeholder="Username" required>
             <input type="text" name="phone" placeholder="Phone Number" required>
@@ -68,22 +68,5 @@
         <p>Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
         <p><a href="{{ url_for('homepage') }}">← Back to Home</a></p>
     </div>
-
-    <script>
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            const pwd = document.querySelector('input[name="password"]').value;
-            if (pwd.length < 8) {
-                alert('Password must be at least 8 characters long.');
-                e.preventDefault();
-                return false;
-            }
-            const specialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/;
-            if (!specialChars.test(pwd)) {
-                alert('Password must contain at least one special character (e.g., !@#$%^&*).');
-                e.preventDefault();
-                return false;
-            }
-        });
-    </script>
 </body>
 </html>
