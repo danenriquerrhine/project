@@ -16,6 +16,16 @@ def get_db():
         port=53099
     )
 
+# Helper: get managed venues for a user
+def get_managed_venues(user_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT id FROM venues WHERE venue_admin_id = %s", (user_id,))
+    venues = [row['id'] for row in cursor.fetchall()]
+    cursor.close()
+    db.close()
+    return venues
+
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
@@ -71,7 +81,6 @@ def check_availability():
         if not venue:
             abort(404)
 
-        # Only count approved bookings as unavailable
         cursor.execute(
             "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
             (venue_id, date_str)
@@ -144,7 +153,6 @@ def book():
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
 
-        # Insert with status = 'pending'
         cursor.execute(
             "INSERT INTO bookings (id, venue_id, date, time_slot, user_id, status) VALUES (%s, %s, %s, %s, %s, %s)",
             (new_id, venue_id, date, time_slot, user_id, 'pending')
@@ -190,7 +198,6 @@ def delete_booking(id):
         flash("Please log in.", "error")
         return redirect(url_for('login'))
 
-    # Only allow deletion if booking belongs to user and is still pending
     try:
         db = get_db()
         cursor = db.cursor()
@@ -206,7 +213,7 @@ def delete_booking(id):
         flash(f"Error cancelling booking: {e}", "error")
     return redirect(url_for("my_bookings"))
 
-# -------------------- Admin Routes --------------------
+# -------------------- Global Admin Routes --------------------
 @app.route("/admin")
 def admin_dashboard():
     if 'user_id' not in session or not session.get('is_admin'):
@@ -216,6 +223,18 @@ def admin_dashboard():
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
+
+        cursor.execute("SELECT id, name, username, is_venue_admin FROM users")
+        users = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT venues.id, venues.name, venues.location, users.name as admin_name
+            FROM venues
+            LEFT JOIN users ON venues.venue_admin_id = users.id
+            ORDER BY venues.id
+        """)
+        venues = cursor.fetchall()
+
         cursor.execute("""
             SELECT bookings.id, venues.name, venues.location, users.username, bookings.date, bookings.time_slot, bookings.status
             FROM bookings
@@ -224,9 +243,11 @@ def admin_dashboard():
             ORDER BY bookings.date DESC, bookings.time_slot
         """)
         bookings = cursor.fetchall()
+
         cursor.close()
         db.close()
-        return render_template("admin.html", bookings=bookings)
+
+        return render_template("admin.html", users=users, venues=venues, bookings=bookings)
     except Exception as e:
         flash(f"Error loading admin dashboard: {e}", "error")
         return redirect(url_for('homepage'))
@@ -254,6 +275,133 @@ def update_booking_status(id):
         flash(f"Error updating booking: {e}", "error")
     return redirect(url_for('admin_dashboard'))
 
+@app.route("/admin/assign_venue_admin", methods=["POST"])
+def assign_venue_admin():
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    venue_id = request.form.get("venue_id")
+    user_id = request.form.get("user_id")
+
+    if not venue_id or not user_id:
+        flash("Invalid venue or user.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("UPDATE venues SET venue_admin_id = NULL WHERE id = %s", (venue_id,))
+        if user_id != '0':
+            cursor.execute("UPDATE venues SET venue_admin_id = %s WHERE id = %s", (user_id, venue_id))
+            cursor.execute("UPDATE users SET is_venue_admin = 1 WHERE id = %s", (user_id,))
+        db.commit()
+        cursor.close()
+        db.close()
+        flash("Venue admin assigned successfully.", "success")
+    except Exception as e:
+        flash(f"Error assigning venue admin: {e}", "error")
+    return redirect(url_for('admin_dashboard'))
+
+@app.route("/admin/delete_booking/<int:id>")
+def admin_delete_booking(id):
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM bookings WHERE id = %s", (id,))
+        db.commit()
+        flash("Booking cancelled successfully.", "success")
+    except Exception as e:
+        flash(f"Error cancelling booking: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for('admin_dashboard'))
+
+# -------------------- Venue Admin Routes --------------------
+@app.route("/venue_admin")
+def venue_admin_dashboard():
+    if 'user_id' not in session:
+        flash("Please log in.", "error")
+        return redirect(url_for('login'))
+
+    if not session.get('is_venue_admin'):
+        flash("Access denied. You are not a venue admin.", "error")
+        return redirect(url_for('homepage'))
+
+    managed_venues = session.get('managed_venues', [])
+    if not managed_venues:
+        flash("You are not assigned to any venue.", "error")
+        return redirect(url_for('homepage'))
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        placeholders = ','.join(['%s'] * len(managed_venues))
+        cursor.execute(f"""
+            SELECT bookings.id, venues.name, venues.location, users.username, bookings.date, bookings.time_slot, bookings.status
+            FROM bookings
+            JOIN venues ON bookings.venue_id = venues.id
+            JOIN users ON bookings.user_id = users.id
+            WHERE venues.id IN ({placeholders})
+            ORDER BY bookings.date DESC, bookings.time_slot
+        """, managed_venues)
+        bookings = cursor.fetchall()
+
+        cursor.close()
+        db.close()
+
+        return render_template("venue_admin.html", bookings=bookings)
+    except Exception as e:
+        flash(f"Error loading venue admin dashboard: {e}", "error")
+        return redirect(url_for('homepage'))
+
+@app.route("/venue_admin/update_booking/<int:id>", methods=["POST"])
+def venue_admin_update_booking(id):
+    if 'user_id' not in session or not session.get('is_venue_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    new_status = request.form.get("status")
+    if new_status not in ['approved', 'rejected']:
+        flash("Invalid status.", "error")
+        return redirect(url_for('venue_admin_dashboard'))
+
+    managed_venues = session.get('managed_venues', [])
+    if not managed_venues:
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        placeholders = ','.join(['%s'] * len(managed_venues))
+        cursor.execute(f"""
+            SELECT b.id FROM bookings b
+            JOIN venues v ON b.venue_id = v.id
+            WHERE b.id = %s AND v.id IN ({placeholders})
+        """, (id,) + tuple(managed_venues))
+        if not cursor.fetchone():
+            flash("You are not authorized to modify this booking.", "error")
+            cursor.close()
+            db.close()
+            return redirect(url_for('venue_admin_dashboard'))
+
+        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
+        db.commit()
+        flash(f"Booking {new_status}.", "success")
+        cursor.close()
+        db.close()
+    except Exception as e:
+        flash(f"Error updating booking: {e}", "error")
+    return redirect(url_for('venue_admin_dashboard'))
+
 # -------------------- Authentication --------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -273,13 +421,19 @@ def login():
                 session['username'] = user['username']
                 session['name'] = user['name']
                 session['is_admin'] = user.get('is_admin', 0)
+                session['is_venue_admin'] = user.get('is_venue_admin', 0)
+
+                if session['is_venue_admin']:
+                    session['managed_venues'] = get_managed_venues(user['id'])
+
                 flash("Logged in successfully.", "success")
                 next_page = request.args.get('next')
                 if next_page and next_page.startswith('/'):
                     return redirect(next_page)
-                # If admin, redirect to admin dashboard
                 if session['is_admin']:
                     return redirect(url_for('admin_dashboard'))
+                if session['is_venue_admin'] and session.get('managed_venues'):
+                    return redirect(url_for('venue_admin_dashboard'))
                 return redirect(url_for('homepage'))
             else:
                 flash("Invalid username or password.", "error")
@@ -322,10 +476,9 @@ def signup():
             max_id = row['max_id'] if row and row['max_id'] is not None else 0
             new_id = max_id + 1
 
-            # Regular users have is_admin = 0
             cursor.execute(
-                "INSERT INTO users (id, name, username, phone, password, is_admin) VALUES (%s, %s, %s, %s, %s, %s)",
-                (new_id, name, username, phone, password, 0)
+                "INSERT INTO users (id, name, username, phone, password, is_admin, is_venue_admin) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (new_id, name, username, phone, password, 0, 0)
             )
             db.commit()
             flash("Signup successful! Please log in.", "success")
