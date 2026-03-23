@@ -35,7 +35,10 @@ def get_managed_venues(user_id):
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
-    # Redirect venue admins to their dashboard
+    # Redirect global admin to their dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
+    # Redirect venue admin to their dashboard (if they have managed venues)
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -52,7 +55,10 @@ def homepage():
 
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
+    # Redirect venue admin to their dashboard
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -72,7 +78,9 @@ def venue_page(venue_id):
 
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     if 'user_id' not in session:
@@ -122,7 +130,9 @@ def check_availability():
 
 @app.route("/confirm_booking", methods=["POST"])
 def confirm_booking():
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     if 'user_id' not in session:
@@ -155,7 +165,9 @@ def confirm_booking():
 
 @app.route("/book", methods=["POST"])
 def book():
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     if 'user_id' not in session:
@@ -193,7 +205,9 @@ def book():
 
 @app.route("/my_bookings")
 def my_bookings():
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     if 'user_id' not in session:
@@ -220,7 +234,9 @@ def my_bookings():
 
 @app.route("/delete_booking/<int:id>")
 def delete_booking(id):
-    # Redirect venue admins to dashboard
+    # Redirect global admin to dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     if 'user_id' not in session:
@@ -355,11 +371,13 @@ def admin_delete_booking(id):
 # -------------------- Venue Admin Routes --------------------
 @app.route("/venue_admin")
 def venue_admin_dashboard():
+    # Global admins should not access venue admin dashboard
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if 'user_id' not in session:
         flash("Please log in.", "error")
         return redirect(url_for('login'))
 
-    # Check if user is a venue admin
     if not session.get('is_venue_admin'):
         flash("Access denied. You are not a venue admin.", "error")
         return redirect(url_for('homepage'))
@@ -373,7 +391,6 @@ def venue_admin_dashboard():
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        # Get bookings for managed venues
         placeholders = ','.join(['%s'] * len(managed_venues))
         cursor.execute(f"""
             SELECT bookings.id, venues.name, venues.location, users.username, bookings.date, bookings.time_slot, bookings.status
@@ -395,6 +412,8 @@ def venue_admin_dashboard():
 
 @app.route("/venue_admin/update_booking/<int:id>", methods=["POST"])
 def venue_admin_update_booking(id):
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if 'user_id' not in session or not session.get('is_venue_admin'):
         flash("Access denied.", "error")
         return redirect(url_for('homepage'))
@@ -436,6 +455,8 @@ def venue_admin_update_booking(id):
 
 @app.route("/venue_admin/delete_booking/<int:id>")
 def venue_admin_delete_booking(id):
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
     if 'user_id' not in session or not session.get('is_venue_admin'):
         flash("Access denied.", "error")
         return redirect(url_for('homepage'))
@@ -462,7 +483,6 @@ def venue_admin_delete_booking(id):
             db.close()
             return redirect(url_for('venue_admin_dashboard'))
         
-        # Delete the booking
         cursor.execute("DELETE FROM bookings WHERE id = %s", (id,))
         db.commit()
         flash("Booking cancelled successfully.", "success")
