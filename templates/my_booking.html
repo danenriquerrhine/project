@@ -31,6 +31,18 @@ color:red;
 text-decoration:none;
 font-weight:bold;
 }
+.status-pending{
+color:#ff9800;
+font-weight:bold;
+}
+.status-approved{
+color:#4caf50;
+font-weight:bold;
+}
+.status-rejected{
+color:#f44336;
+font-weight:bold;
+}
 .flashes {
     list-style: none;
     padding: 12px 20px;
@@ -66,22 +78,34 @@ font-weight:bold;
 <h1>My Bookings</h1>
 
 <table>
-<tr>
-<th>Venue</th>
-<th>Location</th>
-<th>Date</th>
-<th>Time</th>
-<th>Action</th>
-</tr>
-{% for b in bookings %}
-<tr>
-<td>{{ b.name }}</td>
-<td>{{ b.location }}</td>
-<td>{{ b.date }}</td>
-<td>{{ b.time_slot }}</td>
-<td><a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a></td>
-</tr>
-{% endfor %}
+    <thead>
+        <tr>
+            <th>Venue</th>
+            <th>Location</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for b in bookings %}
+        <tr>
+            <td>{{ b.name }}</td>
+            <td>{{ b.location }}</td>
+            <td>{{ b.date }}</td>
+            <td>{{ b.time_slot }}</td>
+            <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
+            <td>
+                {% if b.status == 'pending' %}
+                <a class="delete" href="/delete_booking/{{ b.id }}">Cancel</a>
+                {% else %}
+                <span>—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
 <br>
 <a href="/">← Back to Homepage</a>
