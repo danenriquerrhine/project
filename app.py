@@ -16,23 +16,6 @@ def get_db():
         port=53099
     )
 
-# Ensure password column exists
-def ensure_password_column():
-    try:
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute("SHOW COLUMNS FROM users LIKE 'password'")
-        if not cursor.fetchone():
-            cursor.execute("ALTER TABLE users ADD COLUMN password VARCHAR(255)")
-            db.commit()
-            print("Added password column to users table.")
-        cursor.close()
-        db.close()
-    except Exception as e:
-        print(f"Error ensuring password column: {e}")
-
-ensure_password_column()
-
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
@@ -88,8 +71,9 @@ def check_availability():
         if not venue:
             abort(404)
 
+        # Only count approved bookings as unavailable
         cursor.execute(
-            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s",
+            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
             (venue_id, date_str)
         )
         booked = [row["time_slot"] for row in cursor.fetchall()]
@@ -160,12 +144,13 @@ def book():
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
 
+        # Insert with status = 'pending'
         cursor.execute(
-            "INSERT INTO bookings (id, venue_id, date, time_slot, user_id) VALUES (%s, %s, %s, %s, %s)",
-            (new_id, venue_id, date, time_slot, user_id)
+            "INSERT INTO bookings (id, venue_id, date, time_slot, user_id, status) VALUES (%s, %s, %s, %s, %s, %s)",
+            (new_id, venue_id, date, time_slot, user_id, 'pending')
         )
         db.commit()
-        flash("Booking successful!", "success")
+        flash("Booking request submitted! Awaiting admin approval.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Booking failed: {e}", "error")
@@ -185,10 +170,11 @@ def my_bookings():
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute("""
-            SELECT bookings.id, venues.name, venues.location, bookings.date, bookings.time_slot
+            SELECT bookings.id, venues.name, venues.location, bookings.date, bookings.time_slot, bookings.status
             FROM bookings
             JOIN venues ON bookings.venue_id = venues.id
             WHERE bookings.user_id = %s
+            ORDER BY bookings.date DESC
         """, (session['user_id'],))
         bookings = cursor.fetchall()
         cursor.close()
@@ -204,17 +190,69 @@ def delete_booking(id):
         flash("Please log in.", "error")
         return redirect(url_for('login'))
 
+    # Only allow deletion if booking belongs to user and is still pending
     try:
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s", (id, session['user_id']))
+        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s AND status = 'pending'", (id, session['user_id']))
         db.commit()
+        if cursor.rowcount > 0:
+            flash("Booking cancelled.", "success")
+        else:
+            flash("Cannot cancel an already approved/rejected booking.", "error")
         cursor.close()
         db.close()
-        flash("Booking cancelled.", "success")
     except Exception as e:
         flash(f"Error cancelling booking: {e}", "error")
     return redirect(url_for("my_bookings"))
+
+# -------------------- Admin Routes --------------------
+@app.route("/admin")
+def admin_dashboard():
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied. Admin only.", "error")
+        return redirect(url_for('homepage'))
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT bookings.id, venues.name, venues.location, users.username, bookings.date, bookings.time_slot, bookings.status
+            FROM bookings
+            JOIN venues ON bookings.venue_id = venues.id
+            JOIN users ON bookings.user_id = users.id
+            ORDER BY bookings.date DESC, bookings.time_slot
+        """)
+        bookings = cursor.fetchall()
+        cursor.close()
+        db.close()
+        return render_template("admin.html", bookings=bookings)
+    except Exception as e:
+        flash(f"Error loading admin dashboard: {e}", "error")
+        return redirect(url_for('homepage'))
+
+@app.route("/admin/update_booking/<int:id>", methods=["POST"])
+def update_booking_status(id):
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    new_status = request.form.get("status")
+    if new_status not in ['approved', 'rejected']:
+        flash("Invalid status.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
+        db.commit()
+        flash(f"Booking {new_status}.", "success")
+        cursor.close()
+        db.close()
+    except Exception as e:
+        flash(f"Error updating booking: {e}", "error")
+    return redirect(url_for('admin_dashboard'))
 
 # -------------------- Authentication --------------------
 @app.route("/login", methods=["GET", "POST"])
@@ -234,10 +272,14 @@ def login():
                 session['user_id'] = user['id']
                 session['username'] = user['username']
                 session['name'] = user['name']
+                session['is_admin'] = user.get('is_admin', 0)
                 flash("Logged in successfully.", "success")
                 next_page = request.args.get('next')
                 if next_page and next_page.startswith('/'):
                     return redirect(next_page)
+                # If admin, redirect to admin dashboard
+                if session['is_admin']:
+                    return redirect(url_for('admin_dashboard'))
                 return redirect(url_for('homepage'))
             else:
                 flash("Invalid username or password.", "error")
@@ -253,11 +295,9 @@ def signup():
         phone = request.form["phone"]
         password = request.form["password"]
 
-        # Validate password
         if len(password) < 8:
             flash("Password must be at least 8 characters long.", "error")
             return redirect(url_for('signup'))
-        # Check for at least one special character
         if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
             flash("Password must contain at least one special character.", "error")
             return redirect(url_for('signup'))
@@ -282,9 +322,10 @@ def signup():
             max_id = row['max_id'] if row and row['max_id'] is not None else 0
             new_id = max_id + 1
 
+            # Regular users have is_admin = 0
             cursor.execute(
-                "INSERT INTO users (id, name, username, phone, password) VALUES (%s, %s, %s, %s, %s)",
-                (new_id, name, username, phone, password)
+                "INSERT INTO users (id, name, username, phone, password, is_admin) VALUES (%s, %s, %s, %s, %s, %s)",
+                (new_id, name, username, phone, password, 0)
             )
             db.commit()
             flash("Signup successful! Please log in.", "success")
