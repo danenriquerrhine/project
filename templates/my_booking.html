@@ -34,6 +34,15 @@ font-weight:bold;
 .delete:hover{
 text-decoration:underline;
 }
+.edit{
+color:#2196f3;
+text-decoration:none;
+font-weight:bold;
+margin-right:10px;
+}
+.edit:hover{
+text-decoration:underline;
+}
 .contact-message{
 color:#ff9800;
 font-style:italic;
@@ -48,6 +57,10 @@ font-weight:bold;
 }
 .status-rejected{
 color:#f44336;
+font-weight:bold;
+}
+.status-held{
+color:#9c27b0;
 font-weight:bold;
 }
 .flashes {
@@ -84,7 +97,7 @@ font-weight:bold;
 
 <h1>My Bookings</h1>
 
-<table>
+表
     <thead>
         <tr>
             <th>Venue</th>
@@ -97,17 +110,20 @@ font-weight:bold;
     </thead>
     <tbody>
         {% for b in bookings %}
-         <tr>
+        <tr>
             <td>{{ b.name }}</td>
             <td>{{ b.location }}</td>
             <td>{{ b.date }}</td>
             <td>{{ b.time_slot }}</td>
             <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
             <td>
-                {% if b.status == 'pending' %}
-                    <a class="delete" href="/delete_booking/{{ b.id }}" onclick="return confirm('Are you sure you want to cancel this booking?');">Cancel</a>
+                {% if b.status == 'pending' or b.status == 'rejected' %}
+                    <a class="edit" href="{{ url_for('edit_booking_form', id=b.id) }}">Edit</a>
+                    <a class="delete" href="{{ url_for('delete_booking', id=b.id) }}" onclick="return confirm('Are you sure you want to cancel this booking?');">Cancel</a>
+                {% elif b.status == 'held' %}
+                    <span class="contact-message">We will fit you right in, in case there is a cancellation.</span>
                 {% elif b.status == 'approved' %}
-                    <span class="contact-message">Please contact the venue to cancel</span>
+                    <span class="contact-message">Please contact the venue to cancel.</span>
                 {% else %}
                     <span>—</span>
                 {% endif %}
