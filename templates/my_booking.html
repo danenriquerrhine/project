@@ -97,7 +97,7 @@ font-weight:bold;
 
 <h1>My Bookings</h1>
 
-<table>
+表
     <thead>
         <tr>
             <th>Venue</th>
@@ -117,11 +117,9 @@ font-weight:bold;
             <td>{{ b.time_slot }}</td>
             <td class="status-{{ b.status }}">{{ b.status|capitalize }}</td>
             <td>
-                {% if b.status == 'pending' or b.status == 'rejected' %}
+                {% if b.status in ['pending', 'rejected', 'held'] %}
                     <a class="edit" href="{{ url_for('edit_booking_form', id=b.id) }}">Edit</a>
                     <a class="delete" href="{{ url_for('delete_booking', id=b.id) }}" onclick="return confirm('Are you sure you want to cancel this booking?');">Cancel</a>
-                {% elif b.status == 'held' %}
-                    <span class="contact-message">We will fit you right in, in case there is a cancellation.</span>
                 {% elif b.status == 'approved' %}
                     <span class="contact-message">Please contact the venue to cancel.</span>
                 {% else %}
