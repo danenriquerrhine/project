@@ -220,7 +220,7 @@ def book():
 
     return redirect(url_for("my_bookings"))
 
-# -------------------- Edit Booking (Pure HTML) --------------------
+# -------------------- Edit Booking --------------------
 @app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
 def edit_booking_form(id):
     if 'user_id' not in session:
@@ -253,7 +253,15 @@ def edit_booking_form(id):
     if request.method == "POST":
         selected_date = request.form.get("date")
         if selected_date:
-            slots = get_available_slots(booking['venue_id'], selected_date)
+            # Validate that selected_date is not in the past
+            try:
+                selected = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                if selected < date.today():
+                    flash("You cannot select a date in the past.", "error")
+                else:
+                    slots = get_available_slots(booking['venue_id'], selected_date)
+            except ValueError:
+                flash("Invalid date.", "error")
         else:
             flash("Please select a date.", "error")
 
@@ -268,6 +276,16 @@ def update_booking(id):
 
     new_date = request.form["date"]
     new_time = request.form["time_slot"]
+
+    # Validate that the new date is not in the past
+    try:
+        new_date_obj = datetime.strptime(new_date, "%Y-%m-%d").date()
+        if new_date_obj < date.today():
+            flash("You cannot select a date in the past.", "error")
+            return redirect(url_for('edit_booking_form', id=id))
+    except ValueError:
+        flash("Invalid date.", "error")
+        return redirect(url_for('edit_booking_form', id=id))
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -441,10 +459,14 @@ def update_booking_status(id):
         """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
         conflicting = cursor.fetchall()
         if conflicting:
-            # Store the approved booking id in session to redirect to conflict resolution
+            # Convert date to ISO string to avoid SQL errors later
+            if isinstance(booking['date'], date):
+                conflict_date = booking['date'].isoformat()
+            else:
+                conflict_date = str(booking['date'])
             session['conflict_approved_id'] = id
             session['conflict_venue_id'] = booking['venue_id']
-            session['conflict_date'] = booking['date']
+            session['conflict_date'] = conflict_date
             session['conflict_time'] = booking['time_slot']
             cursor.close()
             db.close()
@@ -479,6 +501,21 @@ def admin_conflict_resolution():
         if not approved_id:
             flash("No pending conflict.", "error")
             return redirect(url_for('admin_dashboard'))
+
+        # Ensure date is in YYYY-MM-DD format
+        if date_str:
+            try:
+                # If it's a date object, convert; if it's a string, try to parse.
+                if isinstance(date_str, date):
+                    date_str = date_str.isoformat()
+                else:
+                    # Try to parse from common formats
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    date_str = date_obj.strftime("%Y-%m-%d")
+            except Exception as e:
+                print(f"Date conversion error: {e}", file=sys.stderr)
+                # fallback: assume it's already a string
+                pass
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
@@ -656,9 +693,14 @@ def venue_admin_update_booking(id):
         """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
         conflicting = cursor.fetchall()
         if conflicting:
+            # Convert date to ISO string
+            if isinstance(booking['date'], date):
+                conflict_date = booking['date'].isoformat()
+            else:
+                conflict_date = str(booking['date'])
             session['venue_admin_conflict_approved_id'] = id
             session['venue_admin_conflict_venue_id'] = booking['venue_id']
-            session['venue_admin_conflict_date'] = booking['date']
+            session['venue_admin_conflict_date'] = conflict_date
             session['venue_admin_conflict_time'] = booking['time_slot']
             cursor.close()
             db.close()
@@ -695,6 +737,18 @@ def venue_admin_conflict_resolution():
         if not approved_id:
             flash("No pending conflict.", "error")
             return redirect(url_for('venue_admin_dashboard'))
+
+        # Ensure date is in YYYY-MM-DD format
+        if date_str:
+            try:
+                if isinstance(date_str, date):
+                    date_str = date_str.isoformat()
+                else:
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    date_str = date_obj.strftime("%Y-%m-%d")
+            except Exception as e:
+                print(f"Date conversion error: {e}", file=sys.stderr)
+                pass
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
