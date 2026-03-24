@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, abort, flash, session
+from flask import Flask, render_template, request, redirect, url_for, abort, flash, session, jsonify
 from datetime import datetime, date
 import mysql.connector
 import os
@@ -30,7 +30,7 @@ def get_managed_venues(user_id):
     db.close()
     return venues
 
-# -------------------- Helper: get available slots for a date --------------------
+# Helper: get available slots for a date
 def get_available_slots(venue_id, date_str):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -283,7 +283,7 @@ def update_booking(id):
         flash("Unfortunately, the time slot you have chosen is already booked, please try another time slot.", "error")
         return redirect(url_for('edit_booking_form', id=id))
 
-    # Update the booking (keep status as pending? The user is resubmitting, so we set to pending)
+    # Update the booking (reset status to pending)
     cursor.execute(
         "UPDATE bookings SET date = %s, time_slot = %s, status = 'pending' WHERE id = %s",
         (new_date, new_time, id)
@@ -299,9 +299,9 @@ def get_available_slots():
     venue_id = request.args.get("venue_id")
     date_str = request.args.get("date")
     if not venue_id or not date_str:
-        return []
+        return jsonify([])
     slots = get_available_slots(venue_id, date_str)
-    return slots
+    return jsonify(slots)
 
 # -------------------- User Bookings --------------------
 @app.route("/my_bookings")
