@@ -94,9 +94,9 @@ def check_availability():
         if not venue:
             abort(404)
 
-        # Include both pending and approved bookings as unavailable
+        # Only approved bookings block the slot
         cursor.execute(
-            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status IN ('pending', 'approved')",
+            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
             (venue_id, date_str)
         )
         booked = [row["time_slot"] for row in cursor.fetchall()]
@@ -176,15 +176,15 @@ def book():
         # Start transaction
         db.start_transaction()
 
-        # Double-check availability within the transaction
+        # Only check for approved bookings – pending bookings are allowed
         cursor.execute(
-            "SELECT COUNT(*) FROM bookings WHERE venue_id=%s AND date=%s AND time_slot=%s AND status IN ('pending', 'approved')",
+            "SELECT COUNT(*) FROM bookings WHERE venue_id=%s AND date=%s AND time_slot=%s AND status = 'approved'",
             (venue_id, date, time_slot)
         )
         count = cursor.fetchone()[0]
         if count > 0:
             db.rollback()
-            flash("Sorry, this time slot was just taken. Please choose another.", "error")
+            flash("Sorry, this time slot is already approved for another booking.", "error")
             return redirect(url_for('venue_page', venue_id=venue_id))
 
         # Generate new booking ID
@@ -312,7 +312,26 @@ def update_booking_status(id):
 
     try:
         db = get_db()
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True)
+
+        # If approving, check that no other approved booking exists for the same slot
+        if new_status == 'approved':
+            # Get the booking details
+            cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
+            booking = cursor.fetchone()
+            if booking:
+                cursor.execute("""
+                    SELECT id FROM bookings 
+                    WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved' AND id != %s
+                """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
+                if cursor.fetchone():
+                    flash("Cannot approve: This time slot already has an approved booking.", "error")
+                    cursor.close()
+                    db.close()
+                    return redirect(url_for('admin_dashboard'))
+
+        # Update the status
+        cursor = db.cursor()  # reuse same connection but simpler to create new
         cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
         db.commit()
         flash(f"Booking {new_status}.", "success")
@@ -433,18 +452,31 @@ def venue_admin_update_booking(id):
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        placeholders = ','.join(['%s'] * len(managed_venues))
-        cursor.execute(f"""
-            SELECT b.id FROM bookings b
-            JOIN venues v ON b.venue_id = v.id
-            WHERE b.id = %s AND v.id IN ({placeholders})
-        """, (id,) + tuple(managed_venues))
-        if not cursor.fetchone():
-            flash("You are not authorized to modify this booking.", "error")
-            cursor.close()
-            db.close()
-            return redirect(url_for('venue_admin_dashboard'))
+        # If approving, check that no other approved booking exists for the same slot
+        if new_status == 'approved':
+            # Get the booking details
+            cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
+            booking = cursor.fetchone()
+            if booking:
+                # Also ensure this booking belongs to a managed venue
+                if booking['venue_id'] not in managed_venues:
+                    flash("You are not authorized to approve this booking.", "error")
+                    cursor.close()
+                    db.close()
+                    return redirect(url_for('venue_admin_dashboard'))
 
+                cursor.execute("""
+                    SELECT id FROM bookings 
+                    WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved' AND id != %s
+                """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
+                if cursor.fetchone():
+                    flash("Cannot approve: This time slot already has an approved booking.", "error")
+                    cursor.close()
+                    db.close()
+                    return redirect(url_for('venue_admin_dashboard'))
+
+        # Update the status
+        cursor = db.cursor()
         cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
         db.commit()
         flash(f"Booking {new_status}.", "success")
