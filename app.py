@@ -265,6 +265,7 @@ def edit_booking_form(id):
         else:
             flash("Please select a date.", "error")
 
+    # Always pass slots (empty list if not set)
     return render_template("edit_booking.html", booking=booking, venue=venue, today=today,
                            selected_date=selected_date, slots=slots)
 
@@ -451,19 +452,28 @@ def update_booking_status(id):
         flash("Booking not found.", "error")
         return redirect(url_for('admin_dashboard'))
 
-    # If approving, check for other pending bookings for the same slot
+    # If approving, first approve this booking, then handle conflicts
     if new_status == 'approved':
+        try:
+            cursor.execute("UPDATE bookings SET status = 'approved' WHERE id = %s", (id,))
+            db.commit()
+            flash("Booking approved.", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Error approving booking: {e}", "error")
+            cursor.close()
+            db.close()
+            return redirect(url_for('admin_dashboard'))
+
+        # Now check for other pending bookings for the same slot
         cursor.execute("""
             SELECT id FROM bookings 
             WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND id != %s
         """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
         conflicting = cursor.fetchall()
         if conflicting:
-            # Convert date to ISO string to avoid SQL errors later
-            if isinstance(booking['date'], date):
-                conflict_date = booking['date'].isoformat()
-            else:
-                conflict_date = str(booking['date'])
+            # Store the approved booking id and slot details in session
+            conflict_date = booking['date'].isoformat() if isinstance(booking['date'], date) else str(booking['date'])
             session['conflict_approved_id'] = id
             session['conflict_venue_id'] = booking['venue_id']
             session['conflict_date'] = conflict_date
@@ -471,21 +481,24 @@ def update_booking_status(id):
             cursor.close()
             db.close()
             return redirect(url_for('admin_conflict_resolution'))
+        else:
+            cursor.close()
+            db.close()
+            return redirect(url_for('admin_dashboard'))
+    else:
+        # Reject: simply update status
+        try:
+            cursor.execute("UPDATE bookings SET status = 'rejected' WHERE id = %s", (id,))
+            db.commit()
+            flash("Booking rejected.", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Error rejecting booking: {e}", "error")
+        finally:
+            cursor.close()
+            db.close()
+        return redirect(url_for('admin_dashboard'))
 
-    # No conflicts, just update status
-    try:
-        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
-        db.commit()
-        flash(f"Booking {new_status}.", "success")
-    except Exception as e:
-        db.rollback()
-        flash(f"Error updating booking: {e}", "error")
-    finally:
-        cursor.close()
-        db.close()
-    return redirect(url_for('admin_dashboard'))
-
-# Admin conflict resolution (new route)
 @app.route("/admin/conflict_resolution")
 def admin_conflict_resolution():
     try:
@@ -505,17 +518,13 @@ def admin_conflict_resolution():
         # Ensure date is in YYYY-MM-DD format
         if date_str:
             try:
-                # If it's a date object, convert; if it's a string, try to parse.
                 if isinstance(date_str, date):
                     date_str = date_str.isoformat()
                 else:
-                    # Try to parse from common formats
                     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
                     date_str = date_obj.strftime("%Y-%m-%d")
             except Exception as e:
                 print(f"Date conversion error: {e}", file=sys.stderr)
-                # fallback: assume it's already a string
-                pass
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
@@ -685,19 +694,27 @@ def venue_admin_update_booking(id):
         flash("You are not authorized to modify this booking.", "error")
         return redirect(url_for('venue_admin_dashboard'))
 
-    # If approving, check for other pending bookings for the same slot
+    # If approving, first approve this booking, then handle conflicts
     if new_status == 'approved':
+        try:
+            cursor.execute("UPDATE bookings SET status = 'approved' WHERE id = %s", (id,))
+            db.commit()
+            flash("Booking approved.", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Error approving booking: {e}", "error")
+            cursor.close()
+            db.close()
+            return redirect(url_for('venue_admin_dashboard'))
+
+        # Now check for other pending bookings for the same slot
         cursor.execute("""
             SELECT id FROM bookings 
             WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND id != %s
         """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
         conflicting = cursor.fetchall()
         if conflicting:
-            # Convert date to ISO string
-            if isinstance(booking['date'], date):
-                conflict_date = booking['date'].isoformat()
-            else:
-                conflict_date = str(booking['date'])
+            conflict_date = booking['date'].isoformat() if isinstance(booking['date'], date) else str(booking['date'])
             session['venue_admin_conflict_approved_id'] = id
             session['venue_admin_conflict_venue_id'] = booking['venue_id']
             session['venue_admin_conflict_date'] = conflict_date
@@ -705,21 +722,24 @@ def venue_admin_update_booking(id):
             cursor.close()
             db.close()
             return redirect(url_for('venue_admin_conflict_resolution'))
+        else:
+            cursor.close()
+            db.close()
+            return redirect(url_for('venue_admin_dashboard'))
+    else:
+        # Reject: simply update status
+        try:
+            cursor.execute("UPDATE bookings SET status = 'rejected' WHERE id = %s", (id,))
+            db.commit()
+            flash("Booking rejected.", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Error rejecting booking: {e}", "error")
+        finally:
+            cursor.close()
+            db.close()
+        return redirect(url_for('venue_admin_dashboard'))
 
-    # No conflicts, just update
-    try:
-        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
-        db.commit()
-        flash(f"Booking {new_status}.", "success")
-    except Exception as e:
-        db.rollback()
-        flash(f"Error updating booking: {e}", "error")
-    finally:
-        cursor.close()
-        db.close()
-    return redirect(url_for('venue_admin_dashboard'))
-
-# Venue admin conflict resolution (single, with error handling)
 @app.route("/venue_admin/conflict_resolution")
 def venue_admin_conflict_resolution():
     try:
@@ -748,7 +768,6 @@ def venue_admin_conflict_resolution():
                     date_str = date_obj.strftime("%Y-%m-%d")
             except Exception as e:
                 print(f"Date conversion error: {e}", file=sys.stderr)
-                pass
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
