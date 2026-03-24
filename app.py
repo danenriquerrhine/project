@@ -32,7 +32,7 @@ def get_managed_venues(user_id):
     return venues
 
 # Helper: get available slots for a date (only approved bookings block)
-def get_available_slots(venue_id, date_str):
+def get_free_slots(venue_id, date_str):
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
@@ -260,7 +260,7 @@ def edit_booking_form(id):
                     if selected < date.today():
                         flash("You cannot select a date in the past.", "error")
                     else:
-                        slots = get_available_slots(booking['venue_id'], selected_date)
+                        slots = get_free_slots(booking['venue_id'], selected_date)
                 except ValueError:
                     flash("Invalid date.", "error")
             else:
@@ -339,7 +339,7 @@ def get_available_slots():
     if not venue_id or not date_str:
         return jsonify([])
     try:
-        slots = get_available_slots(venue_id, date_str)
+        slots = get_free_slots(venue_id, date_str)
         return jsonify(slots)
     except Exception as e:
         print(f"Error in get_available_slots: {e}", file=sys.stderr)
