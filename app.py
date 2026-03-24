@@ -453,36 +453,44 @@ def update_booking_status(id):
         db.close()
     return redirect(url_for('admin_dashboard'))
 
-@app.route("/admin/conflict_resolution")
-def admin_conflict_resolution():
-    if 'user_id' not in session or not session.get('is_admin'):
-        flash("Access denied.", "error")
-        return redirect(url_for('homepage'))
+@app.route("/venue_admin/conflict_resolution")
+def venue_admin_conflict_resolution():
+    try:
+        if session.get('is_admin'):
+            return redirect(url_for('admin_dashboard'))
+        if 'user_id' not in session or not session.get('is_venue_admin'):
+            flash("Access denied.", "error")
+            return redirect(url_for('homepage'))
 
-    approved_id = session.pop('conflict_approved_id', None)
-    venue_id = session.pop('conflict_venue_id', None)
-    date_str = session.pop('conflict_date', None)
-    time_slot = session.pop('conflict_time', None)
+        approved_id = session.pop('venue_admin_conflict_approved_id', None)
+        venue_id = session.pop('venue_admin_conflict_venue_id', None)
+        date_str = session.pop('venue_admin_conflict_date', None)
+        time_slot = session.pop('venue_admin_conflict_time', None)
 
-    if not approved_id:
-        flash("No pending conflict.", "error")
-        return redirect(url_for('admin_dashboard'))
+        if not approved_id:
+            flash("No pending conflict.", "error")
+            return redirect(url_for('venue_admin_dashboard'))
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
 
-    # Fetch other pending bookings for the same slot (excluding the approved one)
-    cursor.execute("""
-        SELECT id, user_id, name, username, date, time_slot, status
-        FROM bookings
-        JOIN users ON bookings.user_id = users.id
-        WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND bookings.id != %s
-    """, (venue_id, date_str, time_slot, approved_id))
-    conflicting = cursor.fetchall()
-    cursor.close()
-    db.close()
+        cursor.execute("""
+            SELECT bookings.id, bookings.user_id, users.name, users.username, bookings.date, bookings.time_slot, bookings.status
+            FROM bookings
+            JOIN users ON bookings.user_id = users.id
+            WHERE bookings.venue_id = %s AND bookings.date = %s AND bookings.time_slot = %s
+              AND bookings.status = 'pending' AND bookings.id != %s
+        """, (venue_id, date_str, time_slot, approved_id))
+        conflicting = cursor.fetchall()
+        cursor.close()
+        db.close()
 
-    return render_template("admin_conflict.html", bookings=conflicting, approved_id=approved_id)
+        return render_template("venue_admin_conflict.html", bookings=conflicting, approved_id=approved_id)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f"Error loading conflict resolution: {e}", "error")
+        return redirect(url_for('venue_admin_dashboard'))
 
 @app.route("/admin/resolve_conflict/<int:booking_id>", methods=["POST"])
 def admin_resolve_conflict(booking_id):
