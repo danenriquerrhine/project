@@ -387,12 +387,12 @@ def delete_booking(id):
     try:
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s AND status = 'pending'", (id, session['user_id']))
+        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s AND status IN ('pending', 'held')", (id, session['user_id']))
         db.commit()
         if cursor.rowcount > 0:
             flash("Booking cancelled.", "success")
         else:
-            flash("Cannot cancel an already approved/rejected/held booking.", "error")
+            flash("Cannot cancel an already approved/rejected booking.", "error")
         cursor.close()
         db.close()
     except Exception as e:
