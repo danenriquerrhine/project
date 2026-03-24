@@ -63,79 +63,38 @@
             {% endif %}
         {% endwith %}
 
-        <form action="{{ url_for('update_booking', id=booking.id) }}" method="post">
+        <!-- Step 1: Choose a new date and check availability -->
+        <form method="post">
             <label>New Date:</label>
-            <input type="date" name="date" id="date" min="{{ today }}" required onchange="updateAvailableSlots()">
-
-            <label>New Time Slot:</label>
-            <select name="time_slot" id="time_slot" required>
-                <option value="">Select a date first</option>
-            </select>
-
-            <button type="submit">Update Booking</button>
+            <input type="date" name="date" id="date" min="{{ today }}" required>
+            <button type="submit">Check Available Slots</button>
         </form>
+
+        <!-- Step 2: If a date was selected and we have slots, show the update form -->
+        {% if selected_date %}
+        <form action="{{ url_for('update_booking', id=booking.id) }}" method="post">
+            <input type="hidden" name="date" value="{{ selected_date }}">
+            <label>Selected Date: <strong>{{ selected_date }}</strong></label>
+            <label>New Time Slot:</label>
+            <select name="time_slot" required>
+                {% if slots %}
+                    {% for slot in slots %}
+                        <option value="{{ slot }}">{{ slot }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option value="" disabled>No available slots for this date</option>
+                {% endif %}
+            </select>
+            {% if slots %}
+                <button type="submit">Update Booking</button>
+            {% else %}
+                <button type="submit" disabled>No slots available</button>
+            {% endif %}
+        </form>
+        {% endif %}
+
         <br>
         <a href="{{ url_for('my_bookings') }}">← Back to My Bookings</a>
     </div>
-    <script>
-        // Helper to get today's date in YYYY-MM-DD (local time)
-        function getTodayLocal() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        async function updateAvailableSlots() {
-            const date = document.getElementById('date').value;
-            const venueId = {{ booking.venue_id }};
-            if (!date) return;
-
-            const select = document.getElementById('time_slot');
-            select.innerHTML = '<option value="">Loading...</option>';
-            select.disabled = true;
-
-            try {
-                const response = await fetch(`/get_available_slots?venue_id=${venueId}&date=${date}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const slots = await response.json();
-
-                select.innerHTML = '';
-                if (slots.length === 0) {
-                    select.innerHTML = '<option value="">No available slots for this date</option>';
-                    select.disabled = true;
-                } else {
-                    slots.forEach(slot => {
-                        const option = document.createElement('option');
-                        option.value = slot;
-                        option.textContent = slot;
-                        select.appendChild(option);
-                    });
-                    select.disabled = false;
-                }
-            } catch (error) {
-                console.error('Error fetching slots:', error);
-                select.innerHTML = '<option value="">Error loading slots</option>';
-                select.disabled = true;
-            }
-        }
-
-        // Enforce min date (client-side) in case server min is not applied due to timezone
-        const dateInput = document.getElementById('date');
-        if (dateInput) {
-            const todayLocal = getTodayLocal();
-            dateInput.setAttribute('min', todayLocal);
-            // If the input already has a value that is less than today, reset it
-            if (dateInput.value && dateInput.value < todayLocal) {
-                dateInput.value = '';
-            }
-        }
-
-        // Load slots if date is already set (e.g., after validation error)
-        if (dateInput.value) {
-            updateAvailableSlots();
-        }
-    </script>
 </body>
 </html>
