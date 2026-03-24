@@ -33,7 +33,6 @@ def get_managed_venues(user_id):
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
-    # Redirect venue admins to their dashboard (if they have managed venues)
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -50,7 +49,6 @@ def homepage():
 
 @app.route("/venue/<int:venue_id>")
 def venue_page(venue_id):
-    # Redirect venue admins to their dashboard
     if is_venue_admin_only():
         return redirect(url_for('venue_admin_dashboard'))
     try:
@@ -70,7 +68,6 @@ def venue_page(venue_id):
 
 @app.route("/check_availability", methods=["POST"])
 def check_availability():
-    # Global admin cannot book
     if session.get('is_admin'):
         flash("Admins cannot make bookings.", "error")
         return redirect(url_for('admin_dashboard'))
@@ -97,8 +94,9 @@ def check_availability():
         if not venue:
             abort(404)
 
+        # Include both pending and approved bookings as unavailable
         cursor.execute(
-            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
+            "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status IN ('pending', 'approved')",
             (venue_id, date_str)
         )
         booked = [row["time_slot"] for row in cursor.fetchall()]
@@ -175,6 +173,21 @@ def book():
     cursor = db.cursor()
 
     try:
+        # Start transaction
+        db.start_transaction()
+
+        # Double-check availability within the transaction
+        cursor.execute(
+            "SELECT COUNT(*) FROM bookings WHERE venue_id=%s AND date=%s AND time_slot=%s AND status IN ('pending', 'approved')",
+            (venue_id, date, time_slot)
+        )
+        count = cursor.fetchone()[0]
+        if count > 0:
+            db.rollback()
+            flash("Sorry, this time slot was just taken. Please choose another.", "error")
+            return redirect(url_for('venue_page', venue_id=venue_id))
+
+        # Generate new booking ID
         cursor.execute("SELECT MAX(id) FROM bookings")
         max_id = cursor.fetchone()[0]
         new_id = (max_id if max_id is not None else 0) + 1
