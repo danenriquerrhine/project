@@ -30,7 +30,7 @@ def get_managed_venues(user_id):
     db.close()
     return venues
 
-# Helper: get available slots for a date
+# Helper: get available slots for a date (only approved bookings block)
 def get_available_slots(venue_id, date_str):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -300,8 +300,12 @@ def get_available_slots():
     date_str = request.args.get("date")
     if not venue_id or not date_str:
         return jsonify([])
-    slots = get_available_slots(venue_id, date_str)
-    return jsonify(slots)
+    try:
+        slots = get_available_slots(venue_id, date_str)
+        return jsonify(slots)
+    except Exception as e:
+        print(f"Error in get_available_slots: {e}", file=sys.stderr)
+        return jsonify([])
 
 # -------------------- User Bookings --------------------
 @app.route("/my_bookings")
