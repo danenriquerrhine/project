@@ -3,6 +3,7 @@ from datetime import datetime, date
 import mysql.connector
 import os
 import sys
+import traceback
 
 app = Flask(__name__, template_folder="templates")
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -223,105 +224,113 @@ def book():
 # -------------------- Edit Booking --------------------
 @app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
 def edit_booking_form(id):
-    if 'user_id' not in session:
-        flash("Please log in.", "error")
-        return redirect(url_for('login'))
+    try:
+        if 'user_id' not in session:
+            flash("Please log in.", "error")
+            return redirect(url_for('login'))
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s", (id, session['user_id']))
-    booking = cursor.fetchone()
-    if not booking:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s", (id, session['user_id']))
+        booking = cursor.fetchone()
+        if not booking:
+            cursor.close()
+            db.close()
+            flash("Booking not found.", "error")
+            return redirect(url_for('my_bookings'))
+        if booking['status'] not in ['pending', 'rejected']:
+            cursor.close()
+            db.close()
+            flash("Only pending or rejected bookings can be edited.", "error")
+            return redirect(url_for('my_bookings'))
+
+        cursor.execute("SELECT * FROM venues WHERE id = %s", (booking['venue_id'],))
+        venue = cursor.fetchone()
         cursor.close()
         db.close()
-        flash("Booking not found.", "error")
+
+        today = date.today().isoformat()
+        selected_date = None
+        slots = []
+        if request.method == "POST":
+            selected_date = request.form.get("date")
+            if selected_date:
+                try:
+                    selected = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                    if selected < date.today():
+                        flash("You cannot select a date in the past.", "error")
+                    else:
+                        slots = get_available_slots(booking['venue_id'], selected_date)
+                except ValueError:
+                    flash("Invalid date.", "error")
+            else:
+                flash("Please select a date.", "error")
+
+        return render_template("edit_booking.html", booking=booking, venue=venue, today=today,
+                               selected_date=selected_date, slots=slots)
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error loading edit form: {e}", "error")
         return redirect(url_for('my_bookings'))
-    if booking['status'] not in ['pending', 'rejected']:
-        cursor.close()
-        db.close()
-        flash("Only pending or rejected bookings can be edited.", "error")
-        return redirect(url_for('my_bookings'))
-
-    cursor.execute("SELECT * FROM venues WHERE id = %s", (booking['venue_id'],))
-    venue = cursor.fetchone()
-    cursor.close()
-    db.close()
-
-    today = date.today().isoformat()
-    selected_date = None
-    slots = []
-    if request.method == "POST":
-        selected_date = request.form.get("date")
-        if selected_date:
-            # Validate that selected_date is not in the past
-            try:
-                selected = datetime.strptime(selected_date, "%Y-%m-%d").date()
-                if selected < date.today():
-                    flash("You cannot select a date in the past.", "error")
-                else:
-                    slots = get_available_slots(booking['venue_id'], selected_date)
-            except ValueError:
-                flash("Invalid date.", "error")
-        else:
-            flash("Please select a date.", "error")
-
-    # Always pass slots (empty list if not set)
-    return render_template("edit_booking.html", booking=booking, venue=venue, today=today,
-                           selected_date=selected_date, slots=slots)
 
 @app.route("/update_booking/<int:id>", methods=["POST"])
 def update_booking(id):
-    if 'user_id' not in session:
-        flash("Please log in.", "error")
-        return redirect(url_for('login'))
-
-    new_date = request.form["date"]
-    new_time = request.form["time_slot"]
-
-    # Validate that the new date is not in the past
     try:
-        new_date_obj = datetime.strptime(new_date, "%Y-%m-%d").date()
-        if new_date_obj < date.today():
-            flash("You cannot select a date in the past.", "error")
+        if 'user_id' not in session:
+            flash("Please log in.", "error")
+            return redirect(url_for('login'))
+
+        new_date = request.form["date"]
+        new_time = request.form["time_slot"]
+
+        # Validate that the new date is not in the past
+        try:
+            new_date_obj = datetime.strptime(new_date, "%Y-%m-%d").date()
+            if new_date_obj < date.today():
+                flash("You cannot select a date in the past.", "error")
+                return redirect(url_for('edit_booking_form', id=id))
+        except ValueError:
+            flash("Invalid date.", "error")
             return redirect(url_for('edit_booking_form', id=id))
-    except ValueError:
-        flash("Invalid date.", "error")
-        return redirect(url_for('edit_booking_form', id=id))
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
 
-    # Verify ownership and allow pending or rejected
-    cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status IN ('pending', 'rejected')", (id, session['user_id']))
-    booking = cursor.fetchone()
-    if not booking:
+        # Verify ownership and allow pending or rejected
+        cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status IN ('pending', 'rejected')", (id, session['user_id']))
+        booking = cursor.fetchone()
+        if not booking:
+            cursor.close()
+            db.close()
+            flash("Booking not found or cannot be edited.", "error")
+            return redirect(url_for('my_bookings'))
+
+        # Check if the new slot is already approved (blocked)
+        cursor.execute(
+            "SELECT COUNT(*) FROM bookings WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved'",
+            (booking['venue_id'], new_date, new_time)
+        )
+        count = cursor.fetchone()['COUNT(*)']
+        if count > 0:
+            cursor.close()
+            db.close()
+            flash("Unfortunately, the time slot you have chosen is already booked, please try another time slot.", "error")
+            return redirect(url_for('edit_booking_form', id=id))
+
+        # Update the booking (reset status to pending)
+        cursor.execute(
+            "UPDATE bookings SET date = %s, time_slot = %s, status = 'pending' WHERE id = %s",
+            (new_date, new_time, id)
+        )
+        db.commit()
         cursor.close()
         db.close()
-        flash("Booking not found or cannot be edited.", "error")
+        flash("Booking updated and resubmitted for approval.", "success")
         return redirect(url_for('my_bookings'))
-
-    # Check if the new slot is already approved (blocked)
-    cursor.execute(
-        "SELECT COUNT(*) FROM bookings WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved'",
-        (booking['venue_id'], new_date, new_time)
-    )
-    count = cursor.fetchone()['COUNT(*)']
-    if count > 0:
-        cursor.close()
-        db.close()
-        flash("Unfortunately, the time slot you have chosen is already booked, please try another time slot.", "error")
-        return redirect(url_for('edit_booking_form', id=id))
-
-    # Update the booking (reset status to pending)
-    cursor.execute(
-        "UPDATE bookings SET date = %s, time_slot = %s, status = 'pending' WHERE id = %s",
-        (new_date, new_time, id)
-    )
-    db.commit()
-    cursor.close()
-    db.close()
-    flash("Booking updated and resubmitted for approval.", "success")
-    return redirect(url_for('my_bookings'))
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error updating booking: {e}", "error")
+        return redirect(url_for('my_bookings'))
 
 @app.route("/get_available_slots")
 def get_available_slots():
@@ -452,8 +461,8 @@ def update_booking_status(id):
         flash("Booking not found.", "error")
         return redirect(url_for('admin_dashboard'))
 
-    # If approving, first approve this booking, then handle conflicts
     if new_status == 'approved':
+        # First approve this booking
         try:
             cursor.execute("UPDATE bookings SET status = 'approved' WHERE id = %s", (id,))
             db.commit()
@@ -472,7 +481,6 @@ def update_booking_status(id):
         """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
         conflicting = cursor.fetchall()
         if conflicting:
-            # Store the approved booking id and slot details in session
             conflict_date = booking['date'].isoformat() if isinstance(booking['date'], date) else str(booking['date'])
             session['conflict_approved_id'] = id
             session['conflict_venue_id'] = booking['venue_id']
@@ -486,7 +494,7 @@ def update_booking_status(id):
             db.close()
             return redirect(url_for('admin_dashboard'))
     else:
-        # Reject: simply update status
+        # Reject
         try:
             cursor.execute("UPDATE bookings SET status = 'rejected' WHERE id = %s", (id,))
             db.commit()
@@ -542,7 +550,6 @@ def admin_conflict_resolution():
 
         return render_template("admin_conflict.html", bookings=conflicting, approved_id=approved_id)
     except Exception as e:
-        import traceback
         traceback.print_exc()
         flash(f"Error loading conflict resolution: {e}", "error")
         return redirect(url_for('admin_dashboard'))
@@ -694,8 +701,8 @@ def venue_admin_update_booking(id):
         flash("You are not authorized to modify this booking.", "error")
         return redirect(url_for('venue_admin_dashboard'))
 
-    # If approving, first approve this booking, then handle conflicts
     if new_status == 'approved':
+        # First approve this booking
         try:
             cursor.execute("UPDATE bookings SET status = 'approved' WHERE id = %s", (id,))
             db.commit()
@@ -727,7 +734,7 @@ def venue_admin_update_booking(id):
             db.close()
             return redirect(url_for('venue_admin_dashboard'))
     else:
-        # Reject: simply update status
+        # Reject
         try:
             cursor.execute("UPDATE bookings SET status = 'rejected' WHERE id = %s", (id,))
             db.commit()
@@ -785,7 +792,6 @@ def venue_admin_conflict_resolution():
 
         return render_template("venue_admin_conflict.html", bookings=conflicting, approved_id=approved_id)
     except Exception as e:
-        import traceback
         traceback.print_exc()
         flash(f"Error loading conflict resolution: {e}", "error")
         return redirect(url_for('venue_admin_dashboard'))
