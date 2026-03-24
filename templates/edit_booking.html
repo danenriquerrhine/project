@@ -45,24 +45,6 @@
             border-left: 4px solid #dc3545;
         }
     </style>
-    <script>
-        async function updateAvailableSlots() {
-            const date = document.getElementById('date').value;
-            const venueId = {{ booking.venue_id }};
-            if (!date) return;
-
-            const response = await fetch(`/get_available_slots?venue_id=${venueId}&date=${date}`);
-            const slots = await response.json();
-            const select = document.getElementById('time_slot');
-            select.innerHTML = '';
-            slots.forEach(slot => {
-                const option = document.createElement('option');
-                option.value = slot;
-                option.textContent = slot;
-                select.appendChild(option);
-            });
-        }
-    </script>
 </head>
 <body>
     <div class="container">
@@ -96,6 +78,39 @@
         <a href="{{ url_for('my_bookings') }}">← Back to My Bookings</a>
     </div>
     <script>
+        async function updateAvailableSlots() {
+            const date = document.getElementById('date').value;
+            const venueId = {{ booking.venue_id }};
+            if (!date) return;
+
+            const select = document.getElementById('time_slot');
+            select.innerHTML = '<option value="">Loading...</option>';
+
+            try {
+                const response = await fetch(`/get_available_slots?venue_id=${venueId}&date=${date}`);
+                if (!response.ok) throw new Error('Network error');
+                const slots = await response.json();
+
+                select.innerHTML = '';
+                if (slots.length === 0) {
+                    select.innerHTML = '<option value="">No available slots for this date</option>';
+                    select.disabled = true;
+                } else {
+                    slots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot;
+                        option.textContent = slot;
+                        select.appendChild(option);
+                    });
+                    select.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error fetching slots:', error);
+                select.innerHTML = '<option value="">Error loading slots</option>';
+                select.disabled = true;
+            }
+        }
+
         // Initial load if date already filled (e.g., after validation error)
         const dateInput = document.getElementById('date');
         if (dateInput.value) {
