@@ -221,7 +221,7 @@ def book():
     return redirect(url_for("my_bookings"))
 
 # -------------------- Edit Booking --------------------
-@app.route("/edit_booking/<int:id>", methods=["GET"])
+@app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
 def edit_booking_form(id):
     if 'user_id' not in session:
         flash("Please log in.", "error")
@@ -248,7 +248,20 @@ def edit_booking_form(id):
     db.close()
 
     today = date.today().isoformat()
-    return render_template("edit_booking.html", booking=booking, venue=venue, today=today)
+    selected_date = None
+    slots = []
+    if request.method == "POST":
+        selected_date = request.form.get("date")
+        if selected_date:
+            slots = get_available_slots(booking['venue_id'], selected_date)
+            # If the slot has been selected, we also need to allow the final update.
+            # However, the final update is handled by the separate route `/update_booking`.
+            # We'll pass selected_date and slots to the template.
+        else:
+            flash("Please select a date.", "error")
+
+    return render_template("edit_booking.html", booking=booking, venue=venue, today=today,
+                           selected_date=selected_date, slots=slots)
 
 @app.route("/update_booking/<int:id>", methods=["POST"])
 def update_booking(id):
