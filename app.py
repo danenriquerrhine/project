@@ -30,6 +30,20 @@ def get_managed_venues(user_id):
     db.close()
     return venues
 
+# -------------------- Helper: get available slots for a date --------------------
+def get_available_slots(venue_id, date_str):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT time_slot FROM bookings WHERE venue_id=%s AND date=%s AND status = 'approved'",
+        (venue_id, date_str)
+    )
+    booked = [row["time_slot"] for row in cursor.fetchall()]
+    cursor.close()
+    db.close()
+    all_slots = ["10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00"]
+    return [slot for slot in all_slots if slot not in booked]
+
 # -------------------- Routes --------------------
 @app.route("/")
 def homepage():
@@ -173,10 +187,9 @@ def book():
     cursor = db.cursor()
 
     try:
-        # Start transaction
         db.start_transaction()
 
-        # Only check for approved bookings – pending bookings are allowed
+        # Check if slot is already approved
         cursor.execute(
             "SELECT COUNT(*) FROM bookings WHERE venue_id=%s AND date=%s AND time_slot=%s AND status = 'approved'",
             (venue_id, date, time_slot)
@@ -184,7 +197,7 @@ def book():
         count = cursor.fetchone()[0]
         if count > 0:
             db.rollback()
-            flash("Sorry, this time slot is already approved for another booking.", "error")
+            flash("Unfortunately, the time slot you have chosen is already booked, please try another time slot.", "error")
             return redirect(url_for('venue_page', venue_id=venue_id))
 
         # Generate new booking ID
@@ -207,6 +220,90 @@ def book():
 
     return redirect(url_for("my_bookings"))
 
+# -------------------- Edit Booking --------------------
+@app.route("/edit_booking/<int:id>", methods=["GET"])
+def edit_booking_form(id):
+    if 'user_id' not in session:
+        flash("Please log in.", "error")
+        return redirect(url_for('login'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s", (id, session['user_id']))
+    booking = cursor.fetchone()
+    if not booking:
+        cursor.close()
+        db.close()
+        flash("Booking not found.", "error")
+        return redirect(url_for('my_bookings'))
+    if booking['status'] not in ['pending', 'rejected']:
+        cursor.close()
+        db.close()
+        flash("Only pending or rejected bookings can be edited.", "error")
+        return redirect(url_for('my_bookings'))
+
+    cursor.execute("SELECT * FROM venues WHERE id = %s", (booking['venue_id'],))
+    venue = cursor.fetchone()
+    cursor.close()
+    db.close()
+
+    today = date.today().isoformat()
+    return render_template("edit_booking.html", booking=booking, venue=venue, today=today)
+
+@app.route("/update_booking/<int:id>", methods=["POST"])
+def update_booking(id):
+    if 'user_id' not in session:
+        flash("Please log in.", "error")
+        return redirect(url_for('login'))
+
+    new_date = request.form["date"]
+    new_time = request.form["time_slot"]
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Verify ownership and allow pending or rejected
+    cursor.execute("SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status IN ('pending', 'rejected')", (id, session['user_id']))
+    booking = cursor.fetchone()
+    if not booking:
+        cursor.close()
+        db.close()
+        flash("Booking not found or cannot be edited.", "error")
+        return redirect(url_for('my_bookings'))
+
+    # Check if the new slot is already approved (blocked)
+    cursor.execute(
+        "SELECT COUNT(*) FROM bookings WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved'",
+        (booking['venue_id'], new_date, new_time)
+    )
+    count = cursor.fetchone()['COUNT(*)']
+    if count > 0:
+        cursor.close()
+        db.close()
+        flash("Unfortunately, the time slot you have chosen is already booked, please try another time slot.", "error")
+        return redirect(url_for('edit_booking_form', id=id))
+
+    # Update the booking (keep status as pending? The user is resubmitting, so we set to pending)
+    cursor.execute(
+        "UPDATE bookings SET date = %s, time_slot = %s, status = 'pending' WHERE id = %s",
+        (new_date, new_time, id)
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    flash("Booking updated and resubmitted for approval.", "success")
+    return redirect(url_for('my_bookings'))
+
+@app.route("/get_available_slots")
+def get_available_slots():
+    venue_id = request.args.get("venue_id")
+    date_str = request.args.get("date")
+    if not venue_id or not date_str:
+        return []
+    slots = get_available_slots(venue_id, date_str)
+    return slots
+
+# -------------------- User Bookings --------------------
 @app.route("/my_bookings")
 def my_bookings():
     if session.get('is_admin'):
@@ -253,7 +350,7 @@ def delete_booking(id):
         if cursor.rowcount > 0:
             flash("Booking cancelled.", "success")
         else:
-            flash("Cannot cancel an already approved/rejected booking.", "error")
+            flash("Cannot cancel an already approved/rejected/held booking.", "error")
         cursor.close()
         db.close()
     except Exception as e:
@@ -310,35 +407,105 @@ def update_booking_status(id):
         flash("Invalid status.", "error")
         return redirect(url_for('admin_dashboard'))
 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Get the booking details
+    cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
+    booking = cursor.fetchone()
+    if not booking:
+        cursor.close()
+        db.close()
+        flash("Booking not found.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    # If approving, check for other pending bookings for the same slot
+    if new_status == 'approved':
+        cursor.execute("""
+            SELECT id FROM bookings 
+            WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND id != %s
+        """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
+        conflicting = cursor.fetchall()
+        if conflicting:
+            # Store the approved booking id in session to redirect to conflict resolution
+            session['conflict_approved_id'] = id
+            session['conflict_venue_id'] = booking['venue_id']
+            session['conflict_date'] = booking['date']
+            session['conflict_time'] = booking['time_slot']
+            cursor.close()
+            db.close()
+            return redirect(url_for('admin_conflict_resolution'))
+
+    # No conflicts, just update status
     try:
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
-
-        # If approving, check that no other approved booking exists for the same slot
-        if new_status == 'approved':
-            # Get the booking details
-            cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
-            booking = cursor.fetchone()
-            if booking:
-                cursor.execute("""
-                    SELECT id FROM bookings 
-                    WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved' AND id != %s
-                """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
-                if cursor.fetchone():
-                    flash("Cannot approve: This time slot already has an approved booking.", "error")
-                    cursor.close()
-                    db.close()
-                    return redirect(url_for('admin_dashboard'))
-
-        # Update the status
-        cursor = db.cursor()  # reuse same connection but simpler to create new
         cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
         db.commit()
         flash(f"Booking {new_status}.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error updating booking: {e}", "error")
+    finally:
         cursor.close()
         db.close()
+    return redirect(url_for('admin_dashboard'))
+
+@app.route("/admin/conflict_resolution")
+def admin_conflict_resolution():
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    approved_id = session.pop('conflict_approved_id', None)
+    venue_id = session.pop('conflict_venue_id', None)
+    date_str = session.pop('conflict_date', None)
+    time_slot = session.pop('conflict_time', None)
+
+    if not approved_id:
+        flash("No pending conflict.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Fetch other pending bookings for the same slot (excluding the approved one)
+    cursor.execute("""
+        SELECT id, user_id, name, username, date, time_slot, status
+        FROM bookings
+        JOIN users ON bookings.user_id = users.id
+        WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND bookings.id != %s
+    """, (venue_id, date_str, time_slot, approved_id))
+    conflicting = cursor.fetchall()
+    cursor.close()
+    db.close()
+
+    return render_template("admin_conflict.html", bookings=conflicting, approved_id=approved_id)
+
+@app.route("/admin/resolve_conflict/<int:booking_id>", methods=["POST"])
+def admin_resolve_conflict(booking_id):
+    if 'user_id' not in session or not session.get('is_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    action = request.form.get("action")
+    if action not in ['hold', 'reject']:
+        flash("Invalid action.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    new_status = 'held' if action == 'hold' else 'rejected'
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, booking_id))
+        db.commit()
+        flash(f"Booking {new_status}.", "success")
     except Exception as e:
+        db.rollback()
         flash(f"Error updating booking: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
     return redirect(url_for('admin_dashboard'))
 
 @app.route("/admin/assign_venue_admin", methods=["POST"])
@@ -448,42 +615,107 @@ def venue_admin_update_booking(id):
         flash("Access denied.", "error")
         return redirect(url_for('homepage'))
 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Get the booking details and verify it belongs to a managed venue
+    cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
+    booking = cursor.fetchone()
+    if not booking or booking['venue_id'] not in managed_venues:
+        cursor.close()
+        db.close()
+        flash("You are not authorized to modify this booking.", "error")
+        return redirect(url_for('venue_admin_dashboard'))
+
+    # If approving, check for other pending bookings for the same slot
+    if new_status == 'approved':
+        cursor.execute("""
+            SELECT id FROM bookings 
+            WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND id != %s
+        """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
+        conflicting = cursor.fetchall()
+        if conflicting:
+            session['venue_admin_conflict_approved_id'] = id
+            session['venue_admin_conflict_venue_id'] = booking['venue_id']
+            session['venue_admin_conflict_date'] = booking['date']
+            session['venue_admin_conflict_time'] = booking['time_slot']
+            cursor.close()
+            db.close()
+            return redirect(url_for('venue_admin_conflict_resolution'))
+
+    # No conflicts, just update
     try:
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
-
-        # If approving, check that no other approved booking exists for the same slot
-        if new_status == 'approved':
-            # Get the booking details
-            cursor.execute("SELECT venue_id, date, time_slot FROM bookings WHERE id = %s", (id,))
-            booking = cursor.fetchone()
-            if booking:
-                # Also ensure this booking belongs to a managed venue
-                if booking['venue_id'] not in managed_venues:
-                    flash("You are not authorized to approve this booking.", "error")
-                    cursor.close()
-                    db.close()
-                    return redirect(url_for('venue_admin_dashboard'))
-
-                cursor.execute("""
-                    SELECT id FROM bookings 
-                    WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'approved' AND id != %s
-                """, (booking['venue_id'], booking['date'], booking['time_slot'], id))
-                if cursor.fetchone():
-                    flash("Cannot approve: This time slot already has an approved booking.", "error")
-                    cursor.close()
-                    db.close()
-                    return redirect(url_for('venue_admin_dashboard'))
-
-        # Update the status
-        cursor = db.cursor()
         cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, id))
         db.commit()
         flash(f"Booking {new_status}.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error updating booking: {e}", "error")
+    finally:
         cursor.close()
         db.close()
+    return redirect(url_for('venue_admin_dashboard'))
+
+@app.route("/venue_admin/conflict_resolution")
+def venue_admin_conflict_resolution():
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
+    if 'user_id' not in session or not session.get('is_venue_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    approved_id = session.pop('venue_admin_conflict_approved_id', None)
+    venue_id = session.pop('venue_admin_conflict_venue_id', None)
+    date_str = session.pop('venue_admin_conflict_date', None)
+    time_slot = session.pop('venue_admin_conflict_time', None)
+
+    if not approved_id:
+        flash("No pending conflict.", "error")
+        return redirect(url_for('venue_admin_dashboard'))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id, user_id, name, username, date, time_slot, status
+        FROM bookings
+        JOIN users ON bookings.user_id = users.id
+        WHERE venue_id = %s AND date = %s AND time_slot = %s AND status = 'pending' AND bookings.id != %s
+    """, (venue_id, date_str, time_slot, approved_id))
+    conflicting = cursor.fetchall()
+    cursor.close()
+    db.close()
+
+    return render_template("venue_admin_conflict.html", bookings=conflicting, approved_id=approved_id)
+
+@app.route("/venue_admin/resolve_conflict/<int:booking_id>", methods=["POST"])
+def venue_admin_resolve_conflict(booking_id):
+    if session.get('is_admin'):
+        return redirect(url_for('admin_dashboard'))
+    if 'user_id' not in session or not session.get('is_venue_admin'):
+        flash("Access denied.", "error")
+        return redirect(url_for('homepage'))
+
+    action = request.form.get("action")
+    if action not in ['hold', 'reject']:
+        flash("Invalid action.", "error")
+        return redirect(url_for('venue_admin_dashboard'))
+
+    new_status = 'held' if action == 'hold' else 'rejected'
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, booking_id))
+        db.commit()
+        flash(f"Booking {new_status}.", "success")
     except Exception as e:
+        db.rollback()
         flash(f"Error updating booking: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
     return redirect(url_for('venue_admin_dashboard'))
 
 @app.route("/venue_admin/delete_booking/<int:id>")
